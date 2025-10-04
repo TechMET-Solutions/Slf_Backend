@@ -13,7 +13,7 @@ exports.addBranch = (req, res) => {
         status
     } = req.body;
 
-    // Validate required fields
+
     if (!branch_code || !branch_name || !print_name || !address_line1 || !address_line3 || !mobile_no) {
         return res.status(400).json({ message: "Required fields are missing" });
     }
@@ -41,7 +41,7 @@ exports.addBranch = (req, res) => {
             return res.status(500).json({ message: "Database error", error: err });
         }
 
-        // ✅ Insert branch after ensuring table exists
+      
         const insertQuery = `
       INSERT INTO branch_details
       (branch_code, branch_name, print_name, address_line1, address_line3, mobile_no, lead_person, is_main, status)
