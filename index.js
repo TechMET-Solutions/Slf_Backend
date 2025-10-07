@@ -9,7 +9,7 @@ const pool = require("./config/database");
 
 const { encryptData, decryptData } = require("./src/Helpers/cryptoHelper");
 const MasterRoutes = require("./src/routes/MasterRoutes");
-const cryptoRoutes = require("./src/controller/cryptoRoutes");
+const cryptoRoutes = require("./src/routes/cryptoRoutes");
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
