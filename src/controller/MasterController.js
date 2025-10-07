@@ -87,3 +87,33 @@ exports.getBranches = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+exports.updateBranchStatus = async (req, res) => {
+    try {
+        // 🔹 Decrypt incoming data
+        const encryptedPayload = req.body.data;
+        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+        const { id, status } = decryptedPayload; // status will be "0" or "1"
+        console.log(decryptedPayload, "decryptedPayload")
+        if (!id || (status !== "0" && status !== "1")) {
+            return res.status(400).json({ message: "Invalid branch ID or status" });
+        }
+
+        // ✅ Update branch status
+        const updateQuery = `UPDATE branch_details SET status = ? WHERE id = ?`;
+        await db.query(updateQuery, [status, id]);
+
+        // 🔒 Encrypt and send response
+        const responsePayload = {
+            message: "✅ Branch status updated successfully",
+            id,
+            newStatus: status,
+        };
+
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+        res.status(200).json({ data: encryptedResponse });
+    } catch (error) {
+        console.error("❌ Error updating branch status:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
