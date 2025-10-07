@@ -291,3 +291,71 @@ exports.editItemProfileStatus = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+//Gold Rate List
+
+// 🔸 POST API - Add New Gold Rate
+exports.addGoldRate = async (req, res) => {
+  try {
+    const createGoldRateTable = async () => {
+      const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS gold_rate_list (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      push_date DATE NOT NULL,
+      gold_rate DECIMAL(10,2) NOT NULL,
+      added_on DATE NOT NULL,
+      added_by VARCHAR(100) NOT NULL
+    );
+  `;
+      await db.execute(createTableQuery);
+    };
+    // Ensure table exists
+    await createGoldRateTable();
+
+    // 🔹 Decrypt incoming request
+    const encryptedPayload = req.body.data; // frontend sends inside `data`
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+    const { push_date, gold_rate, added_on, added_by } = decryptedPayload;
+
+    // 🔹 Validation
+    if (!push_date || !gold_rate || !added_on || !added_by) {
+      return res.status(400).json({ message: "Required fields are missing" });
+    }
+
+    // 🔹 Insert into database
+    const query = `
+      INSERT INTO gold_rate_list (push_date, gold_rate, added_on, added_by)
+      VALUES (?, ?, ?, ?)
+    `;
+    await db.execute(query, [push_date, gold_rate, added_on, added_by]);
+
+    res.status(201).json({ message: "Gold rate added successfully" });
+  } catch (error) {
+    console.error("Error in goldrate API:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🔸 GET API - Fetch All Gold Rates
+exports.getGoldRates = async (req, res) => {
+  try {
+    // Ensure table exists
+    await createGoldRateTable();
+
+    const query = `
+      SELECT * FROM gold_rate_list
+      ORDER BY push_date DESC;
+    `;
+
+    const [rows] = await db.execute(query);
+
+    res.status(200).json({
+      message: "Gold rate list fetched successfully",
+      data: rows,
+    });
+  } catch (error) {
+    console.error("Error fetching gold rates:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
