@@ -359,3 +359,176 @@ exports.getGoldRates = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+//  ==================== PRODUCT PURITY START ======================================
+
+// 🟩 ADD PRODUCT PURITY
+exports.addProductPurity = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { purity_name, purity_percent, loan_type = 'gold', product_name, added_by, status = 1 } = decryptedPayload;
+
+    if (!purity_name || !purity_percent || !loan_type || !product_name || !added_by) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // ✅ Create table if not exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS product_purity (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        purity_name VARCHAR(50) NOT NULL,
+        purity_percent VARCHAR(50) NOT NULL,
+        loan_type VARCHAR(50) NOT NULL DEFAULT 'gold',
+        product_name VARCHAR(50) NOT NULL,
+        added_by VARCHAR(50) NOT NULL,
+        status BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    const insertQuery = `
+      INSERT INTO product_purity 
+      (purity_name, purity_percent, loan_type, product_name, added_by, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    const [result] = await db.query(insertQuery, [
+      purity_name,
+      purity_percent,
+      loan_type,
+      product_name,
+      added_by,
+      status
+    ]);
+
+    const responsePayload = {
+      message: "✅ Product Purity added successfully",
+      id: result.insertId,
+    };
+    res.status(201).json({ data: encryptData(JSON.stringify(responsePayload)) });
+
+  } catch (err) {
+    console.error('Add Product Purity Error:', err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟦 GET ALL PRODUCT PURITIES
+exports.getAllProductPurities = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM product_purity ORDER BY id DESC");
+
+    // Encrypt response
+    res.status(200).json({ data: encryptData(JSON.stringify(rows)) });
+  } catch (err) {
+    console.error("❌ Error fetching Product Purity:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟨 UPDATE PRODUCT PURITY
+exports.updateProductPurity = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) return res.status(400).json({ error: "Missing encrypted data" });
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id, purity_name, purity_percent, loan_type, product_name, added_by, status } = decryptedPayload;
+
+    if (!id) return res.status(400).json({ message: "Invalid item ID" });
+
+    const updateFields = [];
+    const updateValues = [];
+
+    if (purity_name !== undefined) {
+      updateFields.push("purity_name = ?");
+      updateValues.push(purity_name);
+    }
+    if (purity_percent !== undefined) {
+      updateFields.push("purity_percent = ?");
+      updateValues.push(purity_percent);
+    }
+    if (loan_type !== undefined) {
+      updateFields.push("loan_type = ?");
+      updateValues.push(loan_type);
+    }
+    if (product_name !== undefined) {
+      updateFields.push("product_name = ?");
+      updateValues.push(product_name);
+    }
+    if (added_by !== undefined) {
+      updateFields.push("added_by = ?");
+      updateValues.push(added_by);
+    }
+    if (status !== undefined) {
+      updateFields.push("status = ?");
+      updateValues.push(status);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    updateValues.push(id);
+    const updateQuery = `UPDATE product_purity SET ${updateFields.join(", ")} WHERE id = ?`;
+    const [result] = await db.query(updateQuery, updateValues);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    const responsePayload = { message: "✅ Product Purity updated successfully", id };
+    res.status(200).json({ data: encryptData(JSON.stringify(responsePayload)) });
+
+  } catch (err) {
+    console.error('Update Product Purity Error:', err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟥 DELETE PRODUCT PURITY
+exports.deleteProductPurity = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) return res.status(400).json({ error: "Missing encrypted data" });
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id } = decryptedPayload;
+
+    if (!id) {
+      return res.status(400).json({ error: "ID is required" });
+    }
+
+    // Check if record exists
+    const [check] = await db.query(`SELECT id FROM product_purity WHERE id = ?`, [id]);
+    if (check.length === 0) {
+      return res.status(404).json({ error: "Record not found" });
+    }
+
+    // Delete the record
+    const [result] = await db.query(`DELETE FROM product_purity WHERE id = ?`, [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No record deleted" });
+    }
+
+    const responsePayload = {
+      message: "🗑️ Product Purity Deleted Successfully",
+      affectedRows: result.affectedRows
+    };
+    res.json({ data: encryptData(JSON.stringify(responsePayload)) });
+
+  } catch (err) {
+    console.error('Delete Product Purity Error:', err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+
+//  ==================== PRODUCT PURITY END ======================================
