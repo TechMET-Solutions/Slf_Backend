@@ -128,21 +128,29 @@ exports.updateBranchStatus = async (req, res) => {
 };
 
 exports.AddItemProfileList = async (req, res) => {
-    try {
-        // 🔹 Decrypt incoming payload
-        const encryptedPayload = req.body.data;
-        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+  try {
+    // 🔹 Decrypt incoming payload
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
 
-        const { code, name, added_by, add_on, modified_by, modified_on, status } =
-            decryptedPayload;
+    const {
+      code,
+      name,
+      added_by,
+      add_on,
+      modified_by,
+      modified_on,
+      status,
+      remark,
+    } = decryptedPayload;
 
-        // ✅ Validate mandatory fields
-        if (!code || !name) {
-            return res.status(400).json({ message: "Code and Name are required" });
-        }
+    // ✅ Validate mandatory fields
+    if (!code || !name) {
+      return res.status(400).json({ message: "Code and Name are required" });
+    }
 
-        // ✅ Ensure table exists
-        const createTableQuery = `
+    // ✅ Ensure table exists
+    const createTableQuery = `
       CREATE TABLE IF NOT EXISTS item_profile_list (
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(50) NOT NULL,
@@ -151,145 +159,157 @@ exports.AddItemProfileList = async (req, res) => {
         add_on DATETIME,
         modified_by VARCHAR(100),
         modified_on DATETIME,
+        remark TEXT,
         status BOOLEAN DEFAULT 1
       )
     `;
-        await db.query(createTableQuery);
+    await db.query(createTableQuery);
 
-        // ✅ Insert new item (if no status provided → default true)
-        const insertQuery = `
-      INSERT INTO item_profile_list (code, name, added_by, add_on, modified_by, modified_on, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+    // ✅ Insert new item (if no status provided → default true)
+    const insertQuery = `
+      INSERT INTO item_profile_list 
+      (code, name, added_by, add_on, modified_by, modified_on, remark, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-        await db.query(insertQuery, [
-            code,
-            name,
-            added_by || null,
-            add_on || null,
-            modified_by || null,
-            modified_on || null,
-            status !== undefined ? status : 1, // 👈 default true if not provided
-        ]);
+    await db.query(insertQuery, [
+      code,
+      name,
+      added_by || null,
+      add_on || null,
+      modified_by || null,
+      modified_on || null,
+      remark || null,
+      status !== undefined ? status : 1, // 👈 default true if not provided
+    ]);
 
-        // 🔒 Encrypt and send response
-        const responsePayload = { message: "✅ Item added successfully" };
-        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    // 🔒 Encrypt and send response
+    const responsePayload = { message: "✅ Item added successfully" };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
 
-        res.status(200).json({ data: encryptedResponse });
-    } catch (error) {
-        console.error("❌ Error adding item:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
-    }
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error adding item:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 exports.updateItemProfile = async (req, res) => {
-    try {
-        const encryptedPayload = req.body.data;
-        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+  try {
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
 
-        const {
-            id,
-            code,
-            name,
-            added_by,
-            add_on,
-            modified_by,
-            modified_on,
-            status,
-        } = decryptedPayload;
+    const {
+      id,
+      code,
+      name,
+      added_by,
+      add_on,
+      modified_by,
+      modified_on,
+      status,
+      remark,
+    } = decryptedPayload;
 
-        if (!id) return res.status(400).json({ message: "Invalid item ID" });
+    if (!id) return res.status(400).json({ message: "Invalid item ID" });
 
-        const updateFields = [];
-        const updateValues = [];
+    const updateFields = [];
+    const updateValues = [];
 
-        if (code !== undefined) {
-            updateFields.push("code = ?");
-            updateValues.push(code);
-        }
-        if (name !== undefined) {
-            updateFields.push("name = ?");
-            updateValues.push(name);
-        }
-        if (added_by !== undefined) {
-            updateFields.push("added_by = ?");
-            updateValues.push(added_by);
-        }
-        if (add_on !== undefined) {
-            updateFields.push("add_on = ?");
-            updateValues.push(add_on);
-        }
-        if (modified_by !== undefined) {
-            updateFields.push("modified_by = ?");
-            updateValues.push(modified_by);
-        }
-        if (modified_on !== undefined) {
-            updateFields.push("modified_on = ?");
-            updateValues.push(modified_on);
-        }
-        if (status !== undefined) {
-            updateFields.push("status = ?");
-            updateValues.push(status);
-        }
-
-        if (updateFields.length === 0)
-            return res.status(400).json({ message: "No fields to update" });
-
-        updateValues.push(id); // for WHERE clause
-        const updateQuery = `UPDATE item_profile_list SET ${updateFields.join(
-            ", "
-        )} WHERE id = ?`;
-        await db.query(updateQuery, updateValues);
-
-        const responsePayload = { message: "✅ Item updated successfully", id };
-        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-        res.status(200).json({ data: encryptedResponse });
-    } catch (error) {
-        console.error("❌ Error updating item:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+    if (code !== undefined) {
+      updateFields.push("code = ?");
+      updateValues.push(code);
     }
+    if (name !== undefined) {
+      updateFields.push("name = ?");
+      updateValues.push(name);
+    }
+    if (added_by !== undefined) {
+      updateFields.push("added_by = ?");
+      updateValues.push(added_by);
+    }
+    if (add_on !== undefined) {
+      updateFields.push("add_on = ?");
+      updateValues.push(add_on);
+    }
+    if (modified_by !== undefined) {
+      updateFields.push("modified_by = ?");
+      updateValues.push(modified_by);
+    }
+    if (modified_on !== undefined) {
+      updateFields.push("modified_on = ?");
+      updateValues.push(modified_on);
+    }
+    if (remark !== undefined) {
+      updateFields.push("remark = ?");
+      updateValues.push(remark);
+    }
+    if (status !== undefined) {
+      updateFields.push("status = ?");
+      updateValues.push(status);
+    }
+
+    if (updateFields.length === 0)
+      return res.status(400).json({ message: "No fields to update" });
+
+    updateValues.push(id); // for WHERE clause
+    const updateQuery = `UPDATE item_profile_list SET ${updateFields.join(
+      ", "
+    )} WHERE id = ?`;
+    await db.query(updateQuery, updateValues);
+
+    const responsePayload = { message: "✅ Item updated successfully", id };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error updating item:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 exports.getAllItemProfiles = async (req, res) => {
-    try {
-        const selectQuery = `SELECT * FROM item_profile_list ORDER BY id DESC`;
-        const [rows] = await db.query(selectQuery);
+  try {
+    const selectQuery = `
+      SELECT id, code, name, added_by, add_on, modified_by, modified_on, remark, status 
+      FROM item_profile_list 
+      ORDER BY id DESC
+    `;
+    const [rows] = await db.query(selectQuery);
 
-        const encryptedResponse = encryptData(JSON.stringify(rows));
-        res.status(200).json({ data: encryptedResponse });
-    } catch (error) {
-        console.error("❌ Error fetching items:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
-    }
+    const encryptedResponse = encryptData(JSON.stringify(rows));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error fetching items:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 exports.editItemProfileStatus = async (req, res) => {
-    try {
-        // 🔹 Decrypt incoming data
-        const encryptedPayload = req.body.data;
-        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+  try {
+    // 🔹 Decrypt incoming data
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
 
-        const { id, status } = decryptedPayload; // status = "0" or "1"
-        console.log(decryptedPayload, "decryptedPayload");
+    const { id, status } = decryptedPayload; // status = "0" or "1"
+    console.log(decryptedPayload, "decryptedPayload");
 
-        // ✅ Validate input
-        if (!id || (status !== 0 && status !== 1)) {
-            return res.status(400).json({ message: "Invalid item ID or status" });
-        }
-
-        // ✅ Update status
-        const updateQuery = `UPDATE item_profile_list SET status = ? WHERE id = ?`;
-        await db.query(updateQuery, [status, id]);
-
-        // 🔒 Encrypt and send response
-        const responsePayload = {
-            message: "✅ Item status updated successfully",
-        };
-        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-
-        res.status(200).json({ data: encryptedResponse });
-    } catch (error) {
-        console.error("❌ Error updating item status:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+    // ✅ Validate input
+    if (!id || (status !== 0 && status !== 1)) {
+      return res.status(400).json({ message: "Invalid item ID or status" });
     }
+
+    // ✅ Update status
+    const updateQuery = `UPDATE item_profile_list SET status = ? WHERE id = ?`;
+    await db.query(updateQuery, [status, id]);
+
+    // 🔒 Encrypt and send response
+    const responsePayload = {
+      message: "✅ Item status updated successfully",
+    };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error updating item status:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 //Gold Rate List
@@ -360,9 +380,6 @@ exports.getGoldRates = async (req, res) => {
     }
 };
 
-
-
-//  ==================== PRODUCT PURITY START ======================================
 
 // 🟩 ADD PRODUCT PURITY
 exports.addProductPurity = async (req, res) => {
