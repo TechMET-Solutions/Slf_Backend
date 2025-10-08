@@ -1,5 +1,6 @@
 const express = require("express");
-const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates,addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity } = require("../controller/MasterController");
+const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, addDocument, getDocuments, updateDocumentStatus } = require("../controller/MasterController");
+const upload = require("../middleware/uploaddocument");
 const router = express.Router();
 
 router.post("/Master_Profile/add_Branch", addBranch);
@@ -22,4 +23,8 @@ router.delete('/Master_Profile/delete-purity', deleteProductPurity);
 
 
 
+
+router.post("/Master_Profile/add_Document", upload.single("file"), addDocument);
+router.get("/Master_Profile/get_document", getDocuments);
+router.post("/Master_Profile/update_document_status", updateDocumentStatus);
 module.exports = router;
