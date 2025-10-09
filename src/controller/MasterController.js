@@ -157,8 +157,8 @@ exports.AddItemProfileList = async (req, res) => {
             name VARCHAR(255) NOT NULL,
             added_by VARCHAR(100),
             add_on VARCHAR(50),
-            modified_by VARCHAR(100),
-            modified_on VARCHAR(50),
+            modified_by VARCHAR(100) NOT NULL,
+            modified_on VARCHAR(50) NOT NULL,
             remark TEXT,
             status BOOLEAN DEFAULT 1
         )
@@ -177,8 +177,8 @@ exports.AddItemProfileList = async (req, res) => {
             name,
             added_by || null,
             add_on || null,
-            modified_by || null,
-            modified_on || null,
+            modified_by || "",
+            modified_on || "",
             remark || null,
             status !== undefined ? status : 1, // 👈 default true if not provided
         ]);
