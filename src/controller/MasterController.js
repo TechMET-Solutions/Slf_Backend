@@ -149,28 +149,28 @@ exports.AddItemProfileList = async (req, res) => {
             return res.status(400).json({ message: "Code and Name are required" });
         }
 
-        // ✅ Ensure table exists
+        // ✅ Ensure table exists (DATE → VARCHAR)
         const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS item_profile_list (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        code VARCHAR(50) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        added_by VARCHAR(100),
-        add_on DATETIME,
-        modified_by VARCHAR(100),
-        modified_on DATETIME,
-        remark TEXT,
-        status BOOLEAN DEFAULT 1
-      )
-    `;
+        CREATE TABLE IF NOT EXISTS item_profile_list (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            added_by VARCHAR(100),
+            add_on VARCHAR(50),
+            modified_by VARCHAR(100),
+            modified_on VARCHAR(50),
+            remark TEXT,
+            status BOOLEAN DEFAULT 1
+        )
+        `;
         await db.query(createTableQuery);
 
         // ✅ Insert new item (if no status provided → default true)
         const insertQuery = `
-      INSERT INTO item_profile_list 
-      (code, name, added_by, add_on, modified_by, modified_on, remark, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+        INSERT INTO item_profile_list 
+        (code, name, added_by, add_on, modified_by, modified_on, remark, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
         await db.query(insertQuery, [
             code,
@@ -193,6 +193,8 @@ exports.AddItemProfileList = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+
 exports.updateItemProfile = async (req, res) => {
     try {
         const encryptedPayload = req.body.data;
@@ -252,9 +254,7 @@ exports.updateItemProfile = async (req, res) => {
             return res.status(400).json({ message: "No fields to update" });
 
         updateValues.push(id); // for WHERE clause
-        const updateQuery = `UPDATE item_profile_list SET ${updateFields.join(
-            ", "
-        )} WHERE id = ?`;
+        const updateQuery = `UPDATE item_profile_list SET ${updateFields.join(", ")} WHERE id = ?`;
         await db.query(updateQuery, updateValues);
 
         const responsePayload = { message: "✅ Item updated successfully", id };
@@ -265,6 +265,7 @@ exports.updateItemProfile = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
 exports.getAllItemProfiles = async (req, res) => {
     try {
         const selectQuery = `
@@ -312,28 +313,11 @@ exports.editItemProfileStatus = async (req, res) => {
     }
 };
 
-//Gold Rate List
 
-// 🔸 POST API - Add New Gold Rate
 exports.addGoldRate = async (req, res) => {
     try {
-        const createGoldRateTable = async () => {
-            const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS gold_rate_list (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      push_date DATE NOT NULL,
-      gold_rate DECIMAL(10,2) NOT NULL,
-      added_on DATE NOT NULL,
-      added_by VARCHAR(100) NOT NULL
-    );
-  `;
-            await db.execute(createTableQuery);
-        };
-        // Ensure table exists
-        await createGoldRateTable();
-
-        // 🔹 Decrypt incoming request
-        const encryptedPayload = req.body.data; // frontend sends inside `data`
+        // ✅ Decrypt incoming request
+        const encryptedPayload = req.body.data;
         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
 
         const { push_date, gold_rate, added_on, added_by } = decryptedPayload;
@@ -343,40 +327,65 @@ exports.addGoldRate = async (req, res) => {
             return res.status(400).json({ message: "Required fields are missing" });
         }
 
-        // 🔹 Insert into database
-        const query = `
-      INSERT INTO gold_rate_list (push_date, gold_rate, added_on, added_by)
-      VALUES (?, ?, ?, ?)
-    `;
-        await db.execute(query, [push_date, gold_rate, added_on, added_by]);
+        // ✅ Ensure table exists (DATE → VARCHAR)
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS gold_rate_list (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                push_date VARCHAR(50) NOT NULL,
+                gold_rate DECIMAL(10,2) NOT NULL,
+                added_on VARCHAR(50) NOT NULL,
+                added_by VARCHAR(100) NOT NULL
+            )
+        `;
+        await db.query(createTableQuery);
 
-        res.status(201).json({ message: "Gold rate added successfully" });
+        // ✅ Insert new gold rate
+        const insertQuery = `
+            INSERT INTO gold_rate_list (push_date, gold_rate, added_on, added_by)
+            VALUES (?, ?, ?, ?)
+        `;
+        await db.query(insertQuery, [push_date, gold_rate, added_on, added_by]);
+
+        // 🔒 Encrypt and send success response
+        const responsePayload = { message: "✅ Gold rate added successfully" };
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+
+        res.status(201).json({ data: encryptedResponse });
     } catch (error) {
-        console.error("Error in goldrate API:", error);
-        res.status(500).json({ message: "Server error" });
+        console.error("❌ Error in addGoldRate:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
 // 🔸 GET API - Fetch All Gold Rates
 exports.getGoldRates = async (req, res) => {
     try {
-        // Ensure table exists
-        await createGoldRateTable();
+        // ✅ Ensure table exists (VARCHAR schema)
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS gold_rate_list (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                push_date VARCHAR(50) NOT NULL,
+                gold_rate DECIMAL(10,2) NOT NULL,
+                added_on VARCHAR(50) NOT NULL,
+                added_by VARCHAR(100) NOT NULL
+            )
+        `;
+        await db.query(createTableQuery);
 
-        const query = `
-      SELECT * FROM gold_rate_list
-      ORDER BY push_date DESC;
-    `;
+        // ✅ Fetch all records
+        const selectQuery = `
+            SELECT id, push_date, gold_rate, added_on, added_by
+            FROM gold_rate_list
+            ORDER BY id DESC
+        `;
+        const [rows] = await db.query(selectQuery);
 
-        const [rows] = await db.execute(query);
-
-        res.status(200).json({
-            message: "Gold rate list fetched successfully",
-            data: rows,
-        });
+        // 🔒 Encrypt data before sending
+        const encryptedResponse = encryptData(JSON.stringify(rows));
+        res.status(200).json({ data: encryptedResponse });
     } catch (error) {
-        console.error("Error fetching gold rates:", error);
-        res.status(500).json({ message: "Server error" });
+        console.error("❌ Error fetching gold rates:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
