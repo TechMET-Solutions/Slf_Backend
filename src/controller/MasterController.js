@@ -385,14 +385,17 @@ exports.getGoldRates = async (req, res) => {
 exports.addProductPurity = async (req, res) => {
     try {
         const encryptedPayload = req.body.data;
-        if (!encryptedPayload) {
-            return res.status(400).json({ error: "Missing encrypted data" });
-        }
 
         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-        const { purity_name, purity_percent, loan_type = 'gold', product_name, added_by, status = 1 } = decryptedPayload;
+        const {
+            purity_name,
+            purity_percent,
+            loan_type,
+            added_by,
+            status
+        } = decryptedPayload;
 
-        if (!purity_name || !purity_percent || !loan_type || !product_name || !added_by) {
+        if (!purity_name || !purity_percent || !loan_type) {
             return res.status(400).json({ error: "All fields are required" });
         }
 
@@ -403,7 +406,6 @@ exports.addProductPurity = async (req, res) => {
         purity_name VARCHAR(50) NOT NULL,
         purity_percent VARCHAR(50) NOT NULL,
         loan_type VARCHAR(50) NOT NULL DEFAULT 'gold',
-        product_name VARCHAR(50) NOT NULL,
         added_by VARCHAR(50) NOT NULL,
         status BOOLEAN DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -413,24 +415,23 @@ exports.addProductPurity = async (req, res) => {
 
         const insertQuery = `
       INSERT INTO product_purity 
-      (purity_name, purity_percent, loan_type, product_name, added_by, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (purity_name, purity_percent, loan_type, added_by, status)
+      VALUES (?, ?, ?, ?, ?)
     `;
         const [result] = await db.query(insertQuery, [
             purity_name,
             purity_percent,
             loan_type,
-            product_name,
-            added_by,
-            status
+            added_by || null,
+            status !== undefined ? status : 1,
         ]);
 
         const responsePayload = {
             message: "✅ Product Purity added successfully",
             id: result.insertId,
         };
-        res.status(201).json({ data: encryptData(JSON.stringify(responsePayload)) });
-
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+        res.status(200).json({ data: encryptedResponse });
     } catch (err) {
         console.error('Add Product Purity Error:', err);
         res.status(500).json({ message: "Server error", error: err.message });
@@ -454,10 +455,17 @@ exports.getAllProductPurities = async (req, res) => {
 exports.updateProductPurity = async (req, res) => {
     try {
         const encryptedPayload = req.body.data;
-        if (!encryptedPayload) return res.status(400).json({ error: "Missing encrypted data" });
-
         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-        const { id, purity_name, purity_percent, loan_type, product_name, added_by, status } = decryptedPayload;
+
+
+        const {
+            id,
+            purity_name,
+            purity_percent,
+            loan_type,
+            added_by,
+            status
+        } = decryptedPayload;
 
         if (!id) return res.status(400).json({ message: "Invalid item ID" });
 
@@ -476,10 +484,6 @@ exports.updateProductPurity = async (req, res) => {
             updateFields.push("loan_type = ?");
             updateValues.push(loan_type);
         }
-        if (product_name !== undefined) {
-            updateFields.push("product_name = ?");
-            updateValues.push(product_name);
-        }
         if (added_by !== undefined) {
             updateFields.push("added_by = ?");
             updateValues.push(added_by);
@@ -495,15 +499,10 @@ exports.updateProductPurity = async (req, res) => {
 
         updateValues.push(id);
         const updateQuery = `UPDATE product_purity SET ${updateFields.join(", ")} WHERE id = ?`;
-        const [result] = await db.query(updateQuery, updateValues);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "Record not found" });
-        }
+        await db.query(updateQuery, updateValues);
 
         const responsePayload = { message: "✅ Product Purity updated successfully", id };
-        res.status(200).json({ data: encryptData(JSON.stringify(responsePayload)) });
-
+        res.status(200).json({ data: responsePayload });
     } catch (err) {
         console.error('Update Product Purity Error:', err);
         res.status(500).json({ message: "Server error", error: err.message });
@@ -514,7 +513,9 @@ exports.updateProductPurity = async (req, res) => {
 exports.deleteProductPurity = async (req, res) => {
     try {
         const encryptedPayload = req.body.data;
-        if (!encryptedPayload) return res.status(400).json({ error: "Missing encrypted data" });
+        if (!encryptedPayload) {
+            return res.status(400).json({ error: "Missing encrypted data" });
+        }
 
         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
         const { id } = decryptedPayload;
@@ -546,6 +547,38 @@ exports.deleteProductPurity = async (req, res) => {
         res.status(500).json({ error: "Server error", message: err.message });
     }
 };
+
+
+// exports.updateProductPurityStatus = async (req, res) => {
+//     try {
+//         // 🔹 Decrypt incoming data
+//         const encryptedPayload = req.body.data;
+//         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+//         const { id, status } = decryptedPayload; // status = "0" or "1"
+//         console.log(decryptedPayload, "decryptedPayload");
+
+//         // ✅ Validate input
+//         if (!id || (status !== 0 && status !== 1)) {
+//             return res.status(400).json({ message: "Invalid item ID or status" });
+//         }
+
+//         // ✅ Update status
+//         const updateQuery = `UPDATE product_purity SET status = ? WHERE id = ?`;
+//         await db.query(updateQuery, [status, id]);
+
+//         // 🔒 Encrypt and send response
+//         const responsePayload = {
+//             message: "✅ Product Purity status updated successfully",
+//         };
+//         const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+
+//         res.status(200).json({ data: encryptedResponse });
+//     } catch (error) {
+//         console.error("❌ Error updating Product Purity status:", error);
+//         res.status(500).json({ message: "Server error", error: error.message });
+//     }
+// };
 
 
 // Document Proof
