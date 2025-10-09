@@ -740,5 +740,156 @@ exports.updateDocumentStatus = async (req, res) => {
 
 
 
+// ================ AREA =============================
+
+// 🟩 ADD AREA
+exports.addArea = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { area_locality, city, state, pincode, landmark } = decryptedPayload;
+
+    if (!area_locality || !city || !state || !pincode || !landmark) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // ✅ Create table if not exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS area (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        area_locality VARCHAR(100) NOT NULL,
+        city VARCHAR(100) NOT NULL,
+        state VARCHAR(100) NOT NULL,
+        pincode VARCHAR(20) NOT NULL,
+        landmark VARCHAR(150) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    // ✅ Insert record
+    const insertQuery = `
+      INSERT INTO area (area_locality, city, state, pincode, landmark)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    const [result] = await db.query(insertQuery, [
+      area_locality,
+      city,
+      state,
+      pincode,
+      landmark,
+    ]);
+
+    const responsePayload = {
+      message: "✅ Area added successfully",
+      id: result.insertId,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("Add Area Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟦 GET ALL PRODUCT PURITIES
+exports.getArea = async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT * FROM area ORDER BY id DESC");
+
+        // Encrypt response
+        res.status(200).json({ data: encryptData(JSON.stringify(rows)) });
+    } catch (err) {
+        console.error("❌ Error fetching Area:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+// 🟡 UPDATE AREA
+exports.updateArea = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id, area_locality, city, state, pincode, landmark } = decryptedPayload;
+
+    if (!id || !area_locality || !city || !state || !pincode || !landmark) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const updateQuery = `
+      UPDATE area 
+      SET area_locality = ?, city = ?, state = ?, pincode = ?, landmark = ?
+      WHERE id = ?
+    `;
+    const [result] = await db.query(updateQuery, [
+      area_locality,
+      city,
+      state,
+      pincode,
+      landmark,
+      id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Area not found" });
+    }
+
+    const responsePayload = {
+      message: "✅ Area updated successfully",
+      id,
+    };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("Update Area Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🔴 DELETE AREA
+exports.deleteArea = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id } = decryptedPayload;
+
+    if (!id) {
+      return res.status(400).json({ error: "Area ID is required" });
+    }
+
+    const deleteQuery = `DELETE FROM area WHERE id = ?`;
+    const [result] = await db.query(deleteQuery, [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Area not found" });
+    }
+
+    const responsePayload = {
+      message: "🗑️ Area deleted successfully",
+      id,
+    };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("Delete Area Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 
