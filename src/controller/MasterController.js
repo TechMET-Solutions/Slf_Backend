@@ -84,18 +84,80 @@ exports.addBranch = async (req, res) => {
 };
 exports.getBranches = async (req, res) => {
     try {
+        // 📦 Get pagination parameters from query (default: page=1, limit=10)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        // ✅ Fetch total count (for frontend pagination)
+        const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM branch_details");
+
+        // ✅ Fetch paginated records
         const [rows] = await db.query(
-            "SELECT * FROM branch_details ORDER BY id DESC"
+            "SELECT * FROM branch_details ORDER BY id DESC LIMIT ? OFFSET ?",
+            [limit, offset]
         );
 
         // 🔒 Encrypt response
-        const encryptedResponse = encryptData(JSON.stringify(rows));
+        const encryptedResponse = encryptData(
+            JSON.stringify({ branches: rows, total, page, limit })
+        );
+
         res.status(200).json({ data: encryptedResponse });
     } catch (error) {
         console.error("❌ Error fetching branches:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+exports.updateBranch = async (req, res) => {
+    try {
+        // 🔓 Decrypt incoming payload
+        if (!req.body.data) {
+            return res.status(400).json({ message: "Missing encrypted data" });
+        }
+        const encryptedPayload = req.body.data;
+        const decrypted = JSON.parse(decryptData(encryptedPayload));
+        const { id, branch_code, branch_name, print_name, address_line1, address_line3, mobile_no, lead_person, is_main, status } = decrypted;
+
+        if (!id) {
+            return res.status(400).json({ message: "Branch ID is required" });
+        }
+
+        // 🧩 Update query
+        const [result] = await db.query(
+            `UPDATE branch_details 
+       SET branch_code=?, branch_name=?, print_name=?, address_line1=?, address_line3=?, 
+           mobile_no=?, lead_person=?, is_main=?, status=? 
+       WHERE id=?`,
+            [
+                branch_code,
+                branch_name,
+                print_name,
+                address_line1,
+                address_line3,
+                mobile_no,
+                lead_person,
+                is_main ? "1" : "0",
+                status ? "1" : "0",
+                id,
+            ]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Branch not found" });
+        }
+
+        const encryptedResponse = encryptData(
+            JSON.stringify({ message: "Branch updated successfully" })
+        );
+        res.status(200).json({ data: encryptedResponse });
+    } catch (error) {
+        console.error("❌ Error updating branch:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
 exports.updateBranchStatus = async (req, res) => {
     try {
         // 🔹 Decrypt incoming data
@@ -744,22 +806,22 @@ exports.updateDocumentStatus = async (req, res) => {
 
 // 🟩 ADD AREA
 exports.addArea = async (req, res) => {
-  try {
-    const encryptedPayload = req.body.data;
+    try {
+        const encryptedPayload = req.body.data;
 
-    if (!encryptedPayload) {
-      return res.status(400).json({ error: "Missing encrypted data" });
-    }
+        if (!encryptedPayload) {
+            return res.status(400).json({ error: "Missing encrypted data" });
+        }
 
-    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-    const { area_locality, city, state, pincode, landmark } = decryptedPayload;
+        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+        const { area_locality, city, state, pincode, landmark } = decryptedPayload;
 
-    if (!area_locality || !city || !state || !pincode || !landmark) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
+        if (!area_locality || !city || !state || !pincode || !landmark) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
 
-    // ✅ Create table if not exists
-    const createTableQuery = `
+        // ✅ Create table if not exists
+        const createTableQuery = `
       CREATE TABLE IF NOT EXISTS area (
         id INT AUTO_INCREMENT PRIMARY KEY,
         area_locality VARCHAR(100) NOT NULL,
@@ -770,32 +832,32 @@ exports.addArea = async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    await db.query(createTableQuery);
+        await db.query(createTableQuery);
 
-    // ✅ Insert record
-    const insertQuery = `
+        // ✅ Insert record
+        const insertQuery = `
       INSERT INTO area (area_locality, city, state, pincode, landmark)
       VALUES (?, ?, ?, ?, ?)
     `;
-    const [result] = await db.query(insertQuery, [
-      area_locality,
-      city,
-      state,
-      pincode,
-      landmark,
-    ]);
+        const [result] = await db.query(insertQuery, [
+            area_locality,
+            city,
+            state,
+            pincode,
+            landmark,
+        ]);
 
-    const responsePayload = {
-      message: "✅ Area added successfully",
-      id: result.insertId,
-    };
+        const responsePayload = {
+            message: "✅ Area added successfully",
+            id: result.insertId,
+        };
 
-    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-    res.status(200).json({ data: encryptedResponse });
-  } catch (err) {
-    console.error("Add Area Error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+        res.status(200).json({ data: encryptedResponse });
+    } catch (err) {
+        console.error("Add Area Error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
 };
 
 // 🟦 GET ALL PRODUCT PURITIES
@@ -813,83 +875,83 @@ exports.getArea = async (req, res) => {
 
 // 🟡 UPDATE AREA
 exports.updateArea = async (req, res) => {
-  try {
-    const encryptedPayload = req.body.data;
+    try {
+        const encryptedPayload = req.body.data;
 
-    if (!encryptedPayload) {
-      return res.status(400).json({ error: "Missing encrypted data" });
-    }
+        if (!encryptedPayload) {
+            return res.status(400).json({ error: "Missing encrypted data" });
+        }
 
-    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-    const { id, area_locality, city, state, pincode, landmark } = decryptedPayload;
+        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+        const { id, area_locality, city, state, pincode, landmark } = decryptedPayload;
 
-    if (!id || !area_locality || !city || !state || !pincode || !landmark) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
+        if (!id || !area_locality || !city || !state || !pincode || !landmark) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
 
-    const updateQuery = `
+        const updateQuery = `
       UPDATE area 
       SET area_locality = ?, city = ?, state = ?, pincode = ?, landmark = ?
       WHERE id = ?
     `;
-    const [result] = await db.query(updateQuery, [
-      area_locality,
-      city,
-      state,
-      pincode,
-      landmark,
-      id,
-    ]);
+        const [result] = await db.query(updateQuery, [
+            area_locality,
+            city,
+            state,
+            pincode,
+            landmark,
+            id,
+        ]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Area not found" });
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Area not found" });
+        }
+
+        const responsePayload = {
+            message: "✅ Area updated successfully",
+            id,
+        };
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+        res.status(200).json({ data: encryptedResponse });
+    } catch (err) {
+        console.error("Update Area Error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
     }
-
-    const responsePayload = {
-      message: "✅ Area updated successfully",
-      id,
-    };
-    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-    res.status(200).json({ data: encryptedResponse });
-  } catch (err) {
-    console.error("Update Area Error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
 };
 
 // 🔴 DELETE AREA
 exports.deleteArea = async (req, res) => {
-  try {
-    const encryptedPayload = req.body.data;
+    try {
+        const encryptedPayload = req.body.data;
 
-    if (!encryptedPayload) {
-      return res.status(400).json({ error: "Missing encrypted data" });
+        if (!encryptedPayload) {
+            return res.status(400).json({ error: "Missing encrypted data" });
+        }
+
+        const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+        const { id } = decryptedPayload;
+
+        if (!id) {
+            return res.status(400).json({ error: "Area ID is required" });
+        }
+
+        const deleteQuery = `DELETE FROM area WHERE id = ?`;
+        const [result] = await db.query(deleteQuery, [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Area not found" });
+        }
+
+        const responsePayload = {
+            message: "🗑️ Area deleted successfully",
+            id,
+        };
+        const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+        res.status(200).json({ data: encryptedResponse });
+    } catch (err) {
+        console.error("Delete Area Error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
     }
-
-    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-    const { id } = decryptedPayload;
-
-    if (!id) {
-      return res.status(400).json({ error: "Area ID is required" });
-    }
-
-    const deleteQuery = `DELETE FROM area WHERE id = ?`;
-    const [result] = await db.query(deleteQuery, [id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Area not found" });
-    }
-
-    const responsePayload = {
-      message: "🗑️ Area deleted successfully",
-      id,
-    };
-    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-    res.status(200).json({ data: encryptedResponse });
-  } catch (err) {
-    console.error("Delete Area Error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
 };
 
 
