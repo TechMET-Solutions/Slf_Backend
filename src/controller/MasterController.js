@@ -975,10 +975,48 @@ exports.addArea = async (req, res) => {
 // 🟦 GET ALL PRODUCT PURITIES
 exports.getArea = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM area ORDER BY id DESC");
+    // 📦 Pagination parameters (default: page=1, limit=10)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
 
-    // Encrypt response
-    res.status(200).json({ data: encryptData(JSON.stringify(rows)) });
+    // ✅ Get total count for pagination check
+    const [[{ total }]] = await db.query(
+      "SELECT COUNT(*) AS total FROM area"
+    );
+
+    let rows;
+
+    // 🧭 If more than limit records, apply pagination
+    if (total > limit) {
+      const [paginatedRows] = await db.query(
+        `SELECT * FROM area 
+         ORDER BY id DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      rows = paginatedRows;
+    } else {
+      // ⚡ If less than or equal to limit, fetch all without pagination
+      const [allRows] = await db.query(
+        `SELECT * FROM area 
+         ORDER BY id DESC`
+      );
+      rows = allRows;
+    }
+
+    // 🔒 Encrypt the response
+    const encryptedResponse = encryptData(
+      JSON.stringify({
+        items: rows,
+        total,
+        page,
+        limit,
+        showPagination: total > limit, // 👈 frontend can use this flag
+      })
+    );
+
+    res.status(200).json({ data: encryptedResponse });
   } catch (err) {
     console.error("❌ Error fetching Area:", err);
     res.status(500).json({ message: "Server error", error: err.message });
