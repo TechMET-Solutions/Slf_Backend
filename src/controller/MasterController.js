@@ -472,28 +472,61 @@ exports.addGoldRate = async (req, res) => {
 // 🔸 GET API - Fetch All Gold Rates
 exports.getGoldRates = async (req, res) => {
   try {
+    // 📦 Pagination parameters (default: page=1, limit=10)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
     // ✅ Ensure table exists (VARCHAR schema)
     const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS gold_rate_list (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                push_date VARCHAR(50) NOT NULL,
-                gold_rate DECIMAL(10,2) NOT NULL,
-                added_on VARCHAR(50) NOT NULL,
-                added_by VARCHAR(100) NOT NULL
-            )
-        `;
+      CREATE TABLE IF NOT EXISTS gold_rate_list (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        push_date VARCHAR(50) NOT NULL,
+        gold_rate DECIMAL(10,2) NOT NULL,
+        added_on VARCHAR(50) NOT NULL,
+        added_by VARCHAR(100) NOT NULL
+      )
+    `;
     await db.query(createTableQuery);
 
-    // ✅ Fetch all records
-    const selectQuery = `
-            SELECT id, push_date, gold_rate, added_on, added_by
-            FROM gold_rate_list
-            ORDER BY id DESC
-        `;
-    const [rows] = await db.query(selectQuery);
+    // ✅ Get total count for pagination check
+    const [[{ total }]] = await db.query(
+      "SELECT COUNT(*) AS total FROM gold_rate_list"
+    );
 
-    // 🔒 Encrypt data before sending
-    const encryptedResponse = encryptData(JSON.stringify(rows));
+    let rows;
+
+    // 🧭 If more than limit records, apply pagination
+    if (total > limit) {
+      const [paginatedRows] = await db.query(
+        `SELECT id, push_date, gold_rate, added_on, added_by
+         FROM gold_rate_list
+         ORDER BY id DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      rows = paginatedRows;
+    } else {
+      // ⚡ If less than or equal to limit, fetch all without pagination
+      const [allRows] = await db.query(
+        `SELECT id, push_date, gold_rate, added_on, added_by
+         FROM gold_rate_list
+         ORDER BY id DESC`
+      );
+      rows = allRows;
+    }
+
+    // 🔒 Encrypt the response
+    const encryptedResponse = encryptData(
+      JSON.stringify({
+        items: rows,
+        total,
+        page,
+        limit,
+        showPagination: total > limit, // 👈 frontend can use this flag
+      })
+    );
+
     res.status(200).json({ data: encryptedResponse });
   } catch (error) {
     console.error("❌ Error fetching gold rates:", error);
