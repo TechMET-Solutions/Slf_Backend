@@ -1,4 +1,5 @@
 const express = require("express");
+// const employeeController = require("../../postman/area.controller");
 const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates,  addDocument, getDocuments, updateDocumentStatus,addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch  } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const router = express.Router();
@@ -35,5 +36,12 @@ router.post('/Master_Profile/add-area', addArea);
 router.get('/Master_Profile/get-area', getArea);
 router.put('/Master_Profile/update-area', updateArea);
 router.post('/Master_Profile/delete-area', deleteArea);
+
+//  = = = = = Employee Profile = = = = =
+// router.post("/Employee_Profile/add-employee", employeeController.createEmployee);
+// router.get("/Employee_Profile/getAll-employees", employeeController.getAllEmployees);
+// router.get("/Employee_Profile/get-employee/:id", employeeController.getEmployeeById);
+// router.put("/Employee_Profile/update-employee", employeeController.updateEmployee);
+// router.post("/Employee_Profile/delete-employee", employeeController.deleteEmployee);
 
 module.exports = router;
