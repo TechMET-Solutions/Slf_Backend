@@ -99,7 +99,6 @@ exports.addCustomer = async (req, res) => {
       )
     `;
 
-        // Execute create table
         await db.query(createTableSQL);
 
         // Insert customer data
