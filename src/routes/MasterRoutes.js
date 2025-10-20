@@ -1,6 +1,5 @@
 const express = require("express");
-// const employeeController = require("../../postman/area.controller");
-const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates,  addDocument, getDocuments, updateDocumentStatus,addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch  } = require("../controller/MasterController");
+const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates,  addDocument, getDocuments, updateDocumentStatus,addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee  } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const router = express.Router();
 
@@ -38,10 +37,10 @@ router.put('/Master_Profile/update-area', updateArea);
 router.post('/Master_Profile/delete-area', deleteArea);
 
 //  = = = = = Employee Profile = = = = =
-// router.post("/Employee_Profile/add-employee", employeeController.createEmployee);
-// router.get("/Employee_Profile/getAll-employees", employeeController.getAllEmployees);
-// router.get("/Employee_Profile/get-employee/:id", employeeController.getEmployeeById);
-// router.put("/Employee_Profile/update-employee", employeeController.updateEmployee);
-// router.post("/Employee_Profile/delete-employee", employeeController.deleteEmployee);
+router.post("/Employee_Profile/add-employee", createEmployee);
+router.get("/Employee_Profile/getAll-employees", getAllEmployee);
+// router.get("/Employee_Profile/get-employee/:id", getEmployeeById);
+router.put("/Employee_Profile/update-employee", updateEmployee);
+router.post("/Employee_Profile/delete-employee", deleteEmployee);
 
 module.exports = router;

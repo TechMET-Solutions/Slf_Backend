@@ -1,6 +1,9 @@
 const db = require("../../config/database");
 const { encryptData, decryptData } = require("../Helpers/cryptoHelper");
 const path = require("path");
+const bcrypt = require("bcryptjs");
+
+
 exports.addBranch = async (req, res) => {
   try {
     // 🔹 Decrypt incoming request
@@ -1102,5 +1105,343 @@ exports.deleteArea = async (req, res) => {
   } catch (err) {
     console.error("Delete Area Error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+// ==========================================================
+//  EMPLOYEE PROFILE CONTROLLERS
+// ==========================================================
+
+// 🟩 ADD EMPLOYEE
+exports.createEmployee = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+    const {
+      pan_card,
+      aadhar_card,
+      emp_name,
+      emp_id,
+      mobile_no,
+      email,
+      print_name,
+      corresponding_address,
+      permanent_address,
+      branch,
+      joining_date,
+      designation,
+      date_of_birth,
+      assign_role,
+      password,
+      fax,
+      emp_image,
+      emp_add_prof,
+      emp_id_prof,
+      status
+    } = decryptedPayload;
+
+    // ✅ Validate required fields
+    if (
+      !pan_card || !aadhar_card || !emp_name || !emp_id ||
+      !mobile_no || !email || !print_name || !corresponding_address ||
+      !permanent_address || !branch || !joining_date || !designation ||
+      !date_of_birth || !assign_role || !password || !emp_image ||
+      !emp_add_prof || !emp_id_prof
+    ) {
+      return res.status(400).json({ error: "All required fields must be provided." });
+    }
+
+    // ✅ Hash the password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // ✅ Create table if not exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS employee (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        pan_card VARCHAR(50) NOT NULL UNIQUE,
+        aadhar_card VARCHAR(50) NOT NULL UNIQUE,
+        emp_name VARCHAR(100) NOT NULL,
+        emp_id VARCHAR(100) NOT NULL UNIQUE,
+        mobile_no VARCHAR(15) NOT NULL UNIQUE,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        print_name VARCHAR(100) NOT NULL,
+        corresponding_address VARCHAR(255) NOT NULL,
+        permanent_address VARCHAR(255) NOT NULL,
+        branch VARCHAR(100) NOT NULL,
+        joining_date DATE NOT NULL,
+        designation ENUM('cashier','branch manager','executive','administrator') NOT NULL,
+        date_of_birth DATE NOT NULL,
+        assign_role ENUM('Emp','No role','auditor','minor role','branch manager','executive','administrator') NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        fax VARCHAR(100),
+        emp_image VARCHAR(100) NOT NULL,
+        emp_add_prof VARCHAR(100) NOT NULL,
+        emp_id_prof VARCHAR(100) NOT NULL,
+        status BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await db.query(createTableQuery);
+
+    // ✅ Insert into employee table
+    const insertQuery = `
+      INSERT INTO employee (
+        pan_card, aadhar_card, emp_name, emp_id, mobile_no, email,
+        print_name, corresponding_address, permanent_address, branch,
+        joining_date, designation, date_of_birth, assign_role, password,
+        fax, emp_image, emp_add_prof, emp_id_prof, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      pan_card, aadhar_card, emp_name, emp_id, mobile_no, email,
+      print_name, corresponding_address, permanent_address, branch,
+      joining_date, designation, date_of_birth, assign_role, hashedPassword,
+      fax || '', emp_image, emp_add_prof, emp_id_prof,
+      status !== undefined ? status : 1
+    ];
+
+    const [result] = await db.query(insertQuery, values);
+
+    // ✅ Prepare and send encrypted response
+    const responsePayload = {
+      message: "✅ Employee added successfully",
+      id: result.insertId,
+    };
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error("Add Employee Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+
+// 🟦 GET ALL Employee
+exports.getAllEmployee = async (req, res) => {
+  try {
+    // 📦 Pagination parameters (default: page=1, limit=10)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // ✅ Get total count
+    const [[{ total }]] = await db.query(
+      "SELECT COUNT(*) AS total FROM employee"
+    );
+
+    // ✅ Get paginated employees
+    const [rows] = await db.query(
+      `SELECT * FROM employee 
+       ORDER BY id DESC 
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    // 🔒 Encrypt the response
+    const encryptedResponse = encryptData(
+      JSON.stringify({
+        items: rows,
+        total,
+        page,
+        limit,
+        showPagination: total > limit,
+      })
+    );
+
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error fetching employees:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟩 UPDATE EMPLOYEE
+exports.updateEmployee = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+    const {
+      id,
+      pan_card,
+      aadhar_card,
+      emp_name,
+      emp_id,
+      mobile_no,
+      email,
+      print_name,
+      corresponding_address,
+      permanent_address,
+      branch,
+      joining_date,
+      designation,
+      date_of_birth,
+      assign_role,
+      password,
+      fax,
+      emp_image,
+      emp_add_prof,
+      emp_id_prof,
+      status
+    } = decryptedPayload;
+
+    if (!id) {
+      return res.status(400).json({ message: "Invalid employee ID" });
+    }
+
+    const updateFields = [];
+    const updateValues = [];
+
+    // Add only the fields that are provided
+    if (pan_card !== undefined) {
+      updateFields.push("pan_card = ?");
+      updateValues.push(pan_card);
+    }
+    if (aadhar_card !== undefined) {
+      updateFields.push("aadhar_card = ?");
+      updateValues.push(aadhar_card);
+    }
+    if (emp_name !== undefined) {
+      updateFields.push("emp_name = ?");
+      updateValues.push(emp_name);
+    }
+    if (emp_id !== undefined) {
+      updateFields.push("emp_id = ?");
+      updateValues.push(emp_id);
+    }
+    if (mobile_no !== undefined) {
+      updateFields.push("mobile_no = ?");
+      updateValues.push(mobile_no);
+    }
+    if (email !== undefined) {
+      updateFields.push("email = ?");
+      updateValues.push(email);
+    }
+    if (print_name !== undefined) {
+      updateFields.push("print_name = ?");
+      updateValues.push(print_name);
+    }
+    if (corresponding_address !== undefined) {
+      updateFields.push("corresponding_address = ?");
+      updateValues.push(corresponding_address);
+    }
+    if (permanent_address !== undefined) {
+      updateFields.push("permanent_address = ?");
+      updateValues.push(permanent_address);
+    }
+    if (branch !== undefined) {
+      updateFields.push("branch = ?");
+      updateValues.push(branch);
+    }
+    if (joining_date !== undefined) {
+      updateFields.push("joining_date = ?");
+      updateValues.push(joining_date);
+    }
+    if (designation !== undefined) {
+      updateFields.push("designation = ?");
+      updateValues.push(designation);
+    }
+    if (date_of_birth !== undefined) {
+      updateFields.push("date_of_birth = ?");
+      updateValues.push(date_of_birth);
+    }
+    if (assign_role !== undefined) {
+      updateFields.push("assign_role = ?");
+      updateValues.push(assign_role);
+    }
+    if (password !== undefined) {
+      updateFields.push("password = ?");
+      updateValues.push(password);
+    }
+    if (fax !== undefined) {
+      updateFields.push("fax = ?");
+      updateValues.push(fax);
+    }
+    if (emp_image !== undefined) {
+      updateFields.push("emp_image = ?");
+      updateValues.push(emp_image);
+    }
+    if (emp_add_prof !== undefined) {
+      updateFields.push("emp_add_prof = ?");
+      updateValues.push(emp_add_prof);
+    }
+    if (emp_id_prof !== undefined) {
+      updateFields.push("emp_id_prof = ?");
+      updateValues.push(emp_id_prof);
+    }
+    if (status !== undefined) {
+      updateFields.push("status = ?");
+      updateValues.push(status);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    // Finalize the query
+    updateValues.push(id);
+    const updateQuery = `
+      UPDATE employee 
+      SET ${updateFields.join(", ")} 
+      WHERE id = ?
+    `;
+    await db.query(updateQuery, updateValues);
+
+    // Prepare response
+    const responsePayload = {
+      message: "✅ Employee updated successfully",
+      id,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error("❌ Error updating employee:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// 🟥 DELETE 
+
+exports.deleteEmployee = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id } = decryptedPayload;
+
+    if (!id) {
+      return res.status(400).json({ error: "Employee ID is required" });
+    }
+
+    // ✅ Check if employee exists
+    const [check] = await db.query(`SELECT id FROM employee WHERE id = ?`, [id]);
+    if (check.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // ✅ Delete employee
+    const [result] = await db.query(`DELETE FROM employee WHERE id = ?`, [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No employee deleted" });
+    }
+
+    const responsePayload = {
+      message: "🗑️ Employee deleted successfully",
+      affectedRows: result.affectedRows,
+    };
+    res.json({ data: encryptData(JSON.stringify(responsePayload)) });
+  } catch (err) {
+    console.error("❌ Delete Employee Error:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
   }
 };
