@@ -20,6 +20,7 @@ exports.addBranch = async (req, res) => {
       lead_person,
       is_main,
       status,
+      schemes, // ✅ Expecting JSON array of { id, schemeName }
     } = decryptedPayload;
 
     if (
@@ -46,17 +47,17 @@ exports.addBranch = async (req, res) => {
         lead_person VARCHAR(100),
         is_main TINYINT(1) DEFAULT 0,
         status VARCHAR(20) DEFAULT 'Active',
+        schemes JSON, -- ✅ New column to store scheme mappings
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+    await db.query(createTableQuery);
 
-    await db.query(createTableQuery); // ✅ promise style
-
-    // ✅ Insert branch
+    // ✅ Insert branch with scheme data
     const insertQuery = `
       INSERT INTO branch_details
-      (branch_code, branch_name, print_name, address_line1, address_line3, mobile_no, lead_person, is_main, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (branch_code, branch_name, print_name, address_line1, address_line3, mobile_no, lead_person, is_main, status, schemes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(insertQuery, [
@@ -69,6 +70,7 @@ exports.addBranch = async (req, res) => {
       lead_person,
       is_main,
       status,
+      JSON.stringify(schemes || []), // ✅ Save schemes as JSON
     ]);
 
     // 🔹 Encrypt response before sending
@@ -204,6 +206,90 @@ exports.updateBranchStatus = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+exports.updateBranchSchemes = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ message: "Missing encrypted payload (data)" });
+    }
+
+    // 🔓 Step 1: Decrypt
+    let decryptedPayload = decryptData(encryptedPayload);
+    console.log("🧩 Raw decryptedPayload:", decryptedPayload);
+
+    // 🧠 Step 2: Ensure it's a JS object (double-parse safe)
+    try {
+      // Try parsing once
+      if (typeof decryptedPayload === "string") {
+        decryptedPayload = JSON.parse(decryptedPayload);
+      }
+
+      // If still a string after first parse, parse again
+      if (typeof decryptedPayload === "string") {
+        decryptedPayload = JSON.parse(decryptedPayload);
+      }
+    } catch (err) {
+      console.error("❌ JSON parse error on decryptedPayload:", err.message);
+      return res.status(400).json({ message: "Invalid decrypted payload format" });
+    }
+
+    console.log("🟢 Final Decrypted Payload (object):", decryptedPayload);
+    console.log("✅ Type of decryptedPayload:", typeof decryptedPayload);
+
+    const { branchId, schemes } = decryptedPayload;
+    console.log("branchId:", branchId, "schemes:", schemes, "isArray?", Array.isArray(schemes));
+
+    if (!branchId || !Array.isArray(schemes)) {
+      return res.status(400).json({ message: "branchId and schemes are required" });
+    }
+
+    // ✅ Continue with table creation and update logic
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS branch_details (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        branch_code VARCHAR(50) NOT NULL,
+        branch_name VARCHAR(100) NOT NULL,
+        print_name VARCHAR(100) NOT NULL,
+        address_line1 VARCHAR(255) NOT NULL,
+        address_line3 VARCHAR(255) NOT NULL,
+        mobile_no VARCHAR(15) NOT NULL,
+        lead_person VARCHAR(100),
+        is_main TINYINT(1) DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    const [columns] = await db.query(`SHOW COLUMNS FROM branch_details LIKE 'schemes'`);
+    if (columns.length === 0) {
+      await db.query(`ALTER TABLE branch_details ADD COLUMN schemes JSON`);
+    }
+
+    const updateQuery = `UPDATE branch_details SET schemes = ? WHERE id = ?`;
+    const [result] = await db.query(updateQuery, [JSON.stringify(schemes), branchId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Branch not found" });
+    }
+
+    const responsePayload = {
+      message: "✅ Schemes updated successfully",
+      branchId,
+      totalSchemes: schemes.length,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error updating branch schemes:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
 
 exports.AddItemProfileList = async (req, res) => {
   try {
@@ -1443,5 +1529,240 @@ exports.deleteEmployee = async (req, res) => {
   } catch (err) {
     console.error("❌ Delete Employee Error:", err);
     res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+
+
+exports.addChargeProfile = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res
+        .status(400)
+        .json({ error: encryptData("Missing encrypted data") });
+    }
+
+    const decryptedString = decryptData(encryptedPayload);
+    console.log("🔓 Decrypted String:", decryptedString);
+
+    let decryptedPayload;
+    try {
+      decryptedPayload = JSON.parse(decryptedString);
+      if (typeof decryptedPayload === "string") {
+        decryptedPayload = JSON.parse(decryptedPayload);
+      }
+    } catch (parseError) {
+      throw new Error("Invalid JSON format after decryption");
+    }
+
+    console.log("🧩 Decrypted Payload:", decryptedPayload);
+
+    const { code, description, amount, account, isActive, addedBy } =
+      decryptedPayload;
+    console.log("Extracted:", {
+      code,
+      description,
+      amount,
+      account,
+      isActive,
+      addedBy,
+    });
+
+    if (!code || !amount || !account) {
+      throw new Error("Missing required fields: code, amount, or account");
+    }
+
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS charge_profiles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(100) NOT NULL,
+        description TEXT,
+        amount DECIMAL(10,2) NOT NULL,
+        account VARCHAR(100) NOT NULL,
+        isActive BOOLEAN DEFAULT FALSE,
+        addedBy VARCHAR(100),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    const insertQuery = `
+      INSERT INTO charge_profiles (code, description, amount, account, isActive, addedBy)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    console.log("📝 Insert Values:", [
+      code,
+      description,
+      amount,
+      account,
+      isActive,
+      addedBy,
+    ]);
+
+    const [result] = await db.query(insertQuery, [
+      code,
+      description,
+      amount,
+      account,
+      isActive,
+      addedBy,
+    ]);
+
+    const responseData = {
+      message: "Charge profile added successfully",
+      id: result.insertId,
+    };
+    const encryptedResponse = encryptData(JSON.stringify(responseData));
+    res.status(201).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error in addChargeProfile:", err);
+    const encryptedError = encryptData(
+      JSON.stringify({ message: "Internal server error", error: err.message })
+    );
+    res.status(500).json({ data: encryptedError });
+  }
+};
+
+
+exports.getChargeProfiles = async (req, res) => {
+  try {
+    let id = null;
+
+    // Step 1️⃣ — Decrypt if encrypted payload is provided
+    if (req.body?.data) {
+      const decryptedPayload = JSON.parse(decryptData(req.body.data));
+      id = decryptedPayload.id;
+    }
+
+    // Step 2️⃣ — Ensure table exists
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS charge_profiles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(100) NOT NULL,
+        description TEXT,
+        amount DECIMAL(10,2) NOT NULL,
+        account VARCHAR(100) NOT NULL,
+        isActive BOOLEAN DEFAULT FALSE,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Step 3️⃣ — Fetch data
+    let query = "SELECT * FROM charge_profiles";
+    const params = [];
+
+    if (id) {
+      query += " WHERE id = ?";
+      params.push(id);
+    }
+
+    query += " ORDER BY createdAt DESC";
+
+    const [results] = await db.query(query, params);
+
+    // Step 4️⃣ — Encrypt response
+    const encryptedResponse = encryptData(JSON.stringify({ data: results }));
+
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error fetching data:", err.message);
+    const encryptedError = encryptData(JSON.stringify({ message: "Error fetching data", error: err.message }));
+    res.status(500).json({ data: encryptedError });
+  }
+};
+
+exports.updateChargeProfile = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res
+        .status(400)
+        .json({ error: encryptData("Missing encrypted data") });
+    }
+
+    const decryptedString = decryptData(encryptedPayload);
+    let payload;
+    try {
+      payload = JSON.parse(decryptedString);
+      if (typeof payload === "string") payload = JSON.parse(payload);
+    } catch {
+      throw new Error("Invalid JSON format after decryption");
+    }
+
+    const { id, code, description, amount, account, isActive, addedBy } = payload;
+
+    if (!id || !code || !amount || !account) {
+      throw new Error("Missing required fields: id, code, amount, or account");
+    }
+
+    const updateQuery = `
+      UPDATE charge_profiles
+      SET code = ?, description = ?, amount = ?, account = ?, isActive = ?, addedBy = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await db.query(updateQuery, [
+      code,
+      description,
+      amount,
+      account,
+      isActive,
+      addedBy,
+      id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      throw new Error("Charge profile not found");
+    }
+
+    const response = encryptData(JSON.stringify({ message: "Charge profile updated successfully" }));
+    res.status(200).json({ data: response });
+
+  } catch (err) {
+    console.error("❌ Error in updateChargeProfile:", err.message);
+    const encryptedError = encryptData(JSON.stringify({ message: "Error updating charge profile", error: err.message }));
+    res.status(500).json({ data: encryptedError });
+  }
+};
+
+// ✅ Change only status (isActive)
+exports.changeChargeProfileStatus = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: encryptData("Missing encrypted data") });
+    }
+
+    const decryptedString = decryptData(encryptedPayload);
+    let payload;
+    try {
+      payload = JSON.parse(decryptedString);
+      if (typeof payload === "string") payload = JSON.parse(payload);
+    } catch {
+      throw new Error("Invalid JSON format after decryption");
+    }
+
+    const { id, isActive } = payload;
+
+    if (typeof id === "undefined" || typeof isActive === "undefined") {
+      throw new Error("Missing required fields: id or isActive");
+    }
+
+    const updateQuery = `UPDATE charge_profiles SET isActive = ? WHERE id = ?`;
+    const [result] = await db.query(updateQuery, [isActive, id]);
+
+    if (result.affectedRows === 0) {
+      throw new Error("Charge profile not found");
+    }
+
+    const response = encryptData(JSON.stringify({ message: "Status updated successfully" }));
+    res.status(200).json({ data: response });
+
+  } catch (err) {
+    console.error("❌ Error in changeChargeProfileStatus:", err.message);
+    const encryptedError = encryptData(JSON.stringify({ message: "Error updating status", error: err.message }));
+    res.status(500).json({ data: encryptedError });
   }
 };

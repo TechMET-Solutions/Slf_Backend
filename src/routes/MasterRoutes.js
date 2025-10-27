@@ -1,5 +1,5 @@
 const express = require("express");
-const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates,  addDocument, getDocuments, updateDocumentStatus,addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee  } = require("../controller/MasterController");
+const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const router = express.Router();
 
@@ -7,6 +7,7 @@ router.post("/Master_Profile/add_Branch", addBranch);
 router.get("/Master_Profile/get_Branches", getBranches);
 router.post("/Master_Profile/update_Branch_Status", updateBranchStatus);
 router.post("/Master_Profile/update_Branch", updateBranch);
+router.post("/Master_Profile/updateBranchSchemes", updateBranchSchemes);
 
 router.post("/Master_Profile/add_Item", AddItemProfileList);
 router.put("/Master_Profile/edit_Item_Status", editItemProfileStatus);
@@ -42,5 +43,13 @@ router.get("/Employee_Profile/getAll-employees", getAllEmployee);
 // router.get("/Employee_Profile/get-employee/:id", getEmployeeById);
 router.put("/Employee_Profile/update-employee", updateEmployee);
 router.post("/Employee_Profile/delete-employee", deleteEmployee);
+
+router.post("/ChargesProfile/add", addChargeProfile);
+router.get("/GetChargesProfile/get", getChargeProfiles);
+router.put("/updateChargesProfile", updateChargeProfile);
+
+// ✅ Change only the status (isActive) of a charge profile
+router.patch("/statusChangeChargesProfile", changeChargeProfileStatus);
+
 
 module.exports = router;

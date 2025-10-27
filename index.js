@@ -12,6 +12,8 @@ const MasterRoutes = require("./src/routes/MasterRoutes");
 const cryptoRoutes = require("./src/routes/cryptoRoutes");
 
 const Customer_router = require('./src/routes/MasterCustomer');
+const SchemeRouter = require('./src/routes/schemeRoutes');
+
 
 
 
@@ -23,7 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/Master", MasterRoutes);
 app.use("/Master/doc", Customer_router);
 app.use("/", cryptoRoutes);
-
+app.use("/Scheme", SchemeRouter);
 
 
 
