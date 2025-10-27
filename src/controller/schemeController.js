@@ -35,6 +35,8 @@ exports.addSchemeDetails = async (req, res) => {
         interestRates JSON,
          roles JSON,
         status TINYINT(1) DEFAULT 0, -- 1 = active, 0 = inactive,
+         renewedBy VARCHAR(100) DEFAULT NULL,
+         renewedOn DATE DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -98,11 +100,31 @@ exports.getAllSchemes = async (req, res) => {
     try {
         const [rows] = await db.query("SELECT * FROM scheme_details");
 
-        const formatted = rows.map((r) => ({
-            ...r,
-            interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
-            intCompound: r.calcMethod === "compound" ? true : false, // compute intCompound
-        }));
+        // 🗓️ Get today's date (YYYY-MM-DD)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const formatted = rows
+            .map((r) => ({
+                ...r,
+                interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
+                intCompound: r.calcMethod === "compound",
+            }))
+            .filter((r) => {
+                if (!r.applicableTo) return false;
+
+                // Ensure we safely extract date part
+                const appTo = new Date(r.applicableTo);
+                const appToStr = `${appTo.getFullYear()}-${String(
+                    appTo.getMonth() + 1
+                ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
+
+                // ✅ Include if applicableTo is today or after today
+                return appToStr >= todayStr;
+            });
 
         res.json(formatted);
     } catch (err) {
@@ -110,6 +132,43 @@ exports.getAllSchemes = async (req, res) => {
         res.status(500).json({ error: "Error fetching schemes" });
     }
 };
+
+exports.getExpiredSchemes = async (req, res) => {
+    try {
+        const [rows] = await db.query("SELECT * FROM scheme_details");
+
+        // 🗓️ Get today's date (YYYY-MM-DD)
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const expiredSchemes = rows
+            .map((r) => ({
+                ...r,
+                interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
+                intCompound: r.calcMethod === "compound",
+            }))
+            .filter((r) => {
+                if (!r.applicableTo) return false;
+
+                const appTo = new Date(r.applicableTo);
+                const appToStr = `${appTo.getFullYear()}-${String(
+                    appTo.getMonth() + 1
+                ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
+
+                // ✅ Include only expired schemes (applicableTo < today)
+                return appToStr < todayStr;
+            });
+
+        res.json(expiredSchemes);
+    } catch (err) {
+        console.error("❌ Error fetching expired schemes:", err);
+        res.status(500).json({ error: "Error fetching expired schemes" });
+    }
+};
+
 
 exports.updateSchemeDetails = async (req, res) => {
     try {
