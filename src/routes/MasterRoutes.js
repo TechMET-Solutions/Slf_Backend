@@ -1,5 +1,5 @@
 const express = require("express");
-const { addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes } = require("../controller/MasterController");
+const {createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const router = express.Router();
 
@@ -43,6 +43,13 @@ router.get("/Employee_Profile/getAll-employees", getAllEmployee);
 // router.get("/Employee_Profile/get-employee/:id", getEmployeeById);
 router.put("/Employee_Profile/update-employee", updateEmployee);
 router.post("/Employee_Profile/delete-employee", deleteEmployee);
+
+
+// = = = = = Roles  = = = = = 
+router.post("/User-Management/add-roles", createRoles);
+router.put("/User-Management/update-roles", updateRole);
+router.get("/User-Management/getAll-roles", getAllRoles);
+
 
 router.post("/ChargesProfile/add", addChargeProfile);
 router.get("/GetChargesProfile/get", getChargeProfiles);

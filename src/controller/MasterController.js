@@ -1265,6 +1265,7 @@ exports.createEmployee = async (req, res) => {
         emp_image VARCHAR(100) NOT NULL,
         emp_add_prof VARCHAR(100) NOT NULL,
         emp_id_prof VARCHAR(100) NOT NULL,
+        assign_branch JSON,
         status BOOLEAN DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -1764,5 +1765,176 @@ exports.changeChargeProfileStatus = async (req, res) => {
     console.error("❌ Error in changeChargeProfileStatus:", err.message);
     const encryptedError = encryptData(JSON.stringify({ message: "Error updating status", error: err.message }));
     res.status(500).json({ data: encryptedError });
+  }
+};
+
+
+
+
+// ============= User Roles ===================================
+
+
+// 🟩 CREATE ROLE
+exports.createRoles = async (req, res) => {
+  try {
+    // 🔐 Step 1: Decrypt incoming payload
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+    const { role_name, system_name, is_system_role, is_active } = decryptedPayload;
+
+    // ✅ Step 2: Validate required fields
+    if (!role_name || !system_name) {
+      return res.status(400).json({ error: "Role name and system name are required." });
+    }
+
+    // ✅ Step 3: Ensure table exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_name VARCHAR(100) NOT NULL,
+        system_name VARCHAR(100) NOT NULL,
+        is_system_role BOOLEAN DEFAULT 0,
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await db.query(createTableQuery);
+
+    // ✅ Step 4: Insert new role
+    const insertQuery = `
+      INSERT INTO roles (role_name, system_name, is_system_role, is_active)
+      VALUES (?, ?, ?, ?)
+    `;
+    const values = [role_name, system_name, is_system_role || 0, is_active || 1];
+
+    const [result] = await db.query(insertQuery, values);
+
+    // 🔒 Step 5: Encrypt response
+    const responsePayload = {
+      message: "✅ Role added successfully",
+      role_id: result.insertId,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error("Add Role Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+// 🟨 UPDATE ROLE
+exports.updateRole = async (req, res) => {
+  try {
+    // 🔐 Step 1: Decrypt incoming payload
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+
+    const { id, role_name, system_name, is_system_role, is_active } = decryptedPayload;
+
+    // ✅ Step 2: Validate required fields
+    if (!id) {
+      return res.status(400).json({ error: "Role ID is required." });
+    }
+
+    // ✅ Step 3: Check if the role exists
+    const [existingRole] = await db.query(`SELECT * FROM roles WHERE id = ?`, [id]);
+    if (existingRole.length === 0) {
+      return res.status(404).json({ error: "Role not found." });
+    }
+
+    // ✅ Step 4: Build dynamic update query
+    const fieldsToUpdate = [];
+    const values = [];
+
+    if (role_name !== undefined) {
+      fieldsToUpdate.push("role_name = ?");
+      values.push(role_name);
+    }
+    if (system_name !== undefined) {
+      fieldsToUpdate.push("system_name = ?");
+      values.push(system_name);
+    }
+    if (is_system_role !== undefined) {
+      fieldsToUpdate.push("is_system_role = ?");
+      values.push(is_system_role);
+    }
+    if (is_active !== undefined) {
+      fieldsToUpdate.push("is_active = ?");
+      values.push(is_active);
+    }
+
+    if (fieldsToUpdate.length === 0) {
+      return res.status(400).json({ error: "No fields provided to update." });
+    }
+
+    const updateQuery = `
+      UPDATE roles 
+      SET ${fieldsToUpdate.join(", ")} 
+      WHERE id = ?
+    `;
+    values.push(id);
+
+    await db.query(updateQuery, values);
+
+    // 🔒 Step 5: Encrypt response
+    const responsePayload = {
+      message: "✅ Role updated successfully",
+      role_id: id,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error("Update Role Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+// 🟦 GET ALL ROLES (with Pagination)
+exports.getAllRoles = async (req, res) => {
+  try {
+    // ✅ Step 1: Ensure table exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_name VARCHAR(100) NOT NULL,
+        system_name VARCHAR(100) NOT NULL,
+        is_system_role BOOLEAN DEFAULT 0,
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await db.query(createTableQuery);
+
+    // 📦 Step 2: Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // ✅ Step 3: Fetch paginated roles
+    const [rows] = await db.query(`SELECT * FROM roles ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset]);
+    const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM roles`);
+
+    // 🔒 Step 4: Encrypt response
+    const responsePayload = {
+      message: rows.length > 0 ? "✅ Roles fetched successfully" : "ℹ️ No roles found",
+      total,
+      page,
+      limit,
+      roles: rows,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.error("Get All Roles Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
