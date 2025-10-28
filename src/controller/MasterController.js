@@ -1771,6 +1771,92 @@ exports.changeChargeProfileStatus = async (req, res) => {
 
 
 
+//=================  Assign/Update Branch ===================================
+// 🟩 PUT — Assign/Update Multiple Branches
+exports.updateAssignBranch = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id, branches } = decryptedPayload; // branches should be an array
+
+    if (!id || !Array.isArray(branches) || branches.length === 0) {
+      return res.status(400).json({
+        error: "Employee ID and a non-empty branches array are required",
+      });
+    }
+
+    // ✅ Check if employee exists
+    const [employee] = await db.query("SELECT id FROM employee WHERE id = ?", [id]);
+    if (employee.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // ✅ Example branches: [{ branch_id, branch_name }, ...]
+    const branchData = JSON.stringify(branches);
+
+    // ✅ Update assign_branch JSON field
+    await db.query(`UPDATE employee SET assign_branch = ? WHERE id = ?`, [
+      branchData,
+      id,
+    ]);
+
+    const responsePayload = {
+      message: "✅ Branches assigned successfully",
+      id,
+      assign_branch: branches,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error updating assigned branches:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+// 🟦 GET — Fetch Assigned Branches
+exports.getAssignBranch = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: "Employee ID is required" });
+    }
+
+    const [rows] = await db.query(
+      `SELECT id, emp_name, assign_branch FROM employee WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // Parse JSON safely
+    const branchData = rows[0].assign_branch
+      ? JSON.parse(rows[0].assign_branch)
+      : [];
+
+    const responsePayload = {
+      message: "✅ Fetched assigned branches successfully",
+      id: rows[0].id,
+      emp_name: rows[0].emp_name,
+      assign_branch: branchData,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error fetching assigned branches:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+
+
 // ============= User Roles ===================================
 
 
