@@ -1266,6 +1266,9 @@ exports.createEmployee = async (req, res) => {
         emp_add_prof VARCHAR(100) NOT NULL,
         emp_id_prof VARCHAR(100) NOT NULL,
         assign_branch JSON,
+        start_time TIME,
+        end_time TIME,
+ ip_address VARCHAR(50);
         status BOOLEAN DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
