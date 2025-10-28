@@ -43,7 +43,7 @@ router.get("/Employee_Profile/getAll-employees", getAllEmployee);
 // router.get("/Employee_Profile/get-employee/:id", getEmployeeById);
 router.put("/Employee_Profile/update-employee", updateEmployee);
 router.post("/Employee_Profile/delete-employee", deleteEmployee);
-router.put("/Employee_Profile/assign-branch", updateAssignBranch);
+router.patch("/Employee_Profile/assign-branch", updateAssignBranch);
 router.get("/Employee_Profile/assign-branch/:id", getAssignBranch);
 
 
