@@ -1769,7 +1769,251 @@ exports.changeChargeProfileStatus = async (req, res) => {
 };
 
 
+exports.updateAssignBranch = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
 
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const { id, branches } = decryptedPayload; // branches should be an array
+
+    if (!id || !Array.isArray(branches) || branches.length === 0) {
+      return res.status(400).json({
+        error: "Employee ID and a non-empty branches array are required",
+      });
+    }
+
+    // ✅ Check if employee exists
+    const [employee] = await db.query("SELECT id FROM employee WHERE id = ?", [
+      id,
+    ]);
+    if (employee.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // ✅ Example branches: [{ branch_id, branch_name }, ...]
+    const branchData = JSON.stringify(branches);
+
+    // ✅ Update assign_branch JSON field
+    await db.query(`UPDATE employee SET assign_branch = ? WHERE id = ?`, [
+      branchData,
+      id,
+    ]);
+
+    const responsePayload = {
+      message: "✅ Branches assigned successfully",
+      id,
+      assign_branch: branches,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error updating assigned branches:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+exports.getAssignBranch = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ error: "Employee ID is required" });
+    }
+
+    const [rows] = await db.query(
+      `SELECT id, emp_name, assign_branch FROM employee WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    // Parse JSON safely
+    const branchData = rows[0].assign_branch
+      ? JSON.parse(rows[0].assign_branch)
+      : [];
+
+    const responsePayload = {
+      message: "✅ Fetched assigned branches successfully",
+      id: rows[0].id,
+      emp_name: rows[0].emp_name,
+      assign_branch: branchData,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error fetching assigned branches:", err);
+    res.status(500).json({ error: "Server error", message: err.message });
+  }
+};
+
+exports.getMemberLoginPeriod = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // ✅ Total count
+    const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM employee");
+
+    // ✅ Get paginated rows
+    const [rows] = await db.query(
+      `SELECT id, emp_id, emp_name, email, start_time, end_time, ip_address
+       FROM employee
+       ORDER BY id ASC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    // ✅ Always encrypt a STRING, not an object
+    const encryptedResponse = encryptData(
+      JSON.stringify({
+        members: rows,
+        total,
+        page,
+        limit,
+      })
+    );
+
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error fetching Member Login Period:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.updateMemberLoginPeriod = async (req, res) => {
+  try {
+    console.log("📥 Received request body:", req.body);
+    
+    const encryptedPayload = req.body.data;
+
+    if (!encryptedPayload) {
+      return res.status(400).json({ error: "Missing encrypted data" });
+    }
+
+    // 🔓 Decrypt the payload
+    const decryptedString = decryptData(encryptedPayload);
+    console.log("🔓 Decrypted String:", decryptedString);
+
+    let decryptedPayload;
+    try {
+      decryptedPayload = JSON.parse(decryptedString);
+      // Handle double JSON stringification if needed
+      if (typeof decryptedPayload === 'string') {
+        decryptedPayload = JSON.parse(decryptedPayload);
+      }
+    } catch (parseError) {
+      console.error("❌ JSON Parse Error:", parseError);
+      return res.status(400).json({ error: "Invalid JSON format after decryption" });
+    }
+
+    console.log("🧩 Decrypted Payload:", decryptedPayload);
+
+    const { id, start_time, end_time } = decryptedPayload; // Removed ip_address
+
+    if (!id) {
+      return res.status(400).json({ error: "Employee ID is required" });
+    }
+
+    // 🧠 Check if employee exists
+    const [employee] = await db.query("SELECT id, emp_name FROM employee WHERE id = ?", [id]);
+    if (employee.length === 0) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    console.log("👤 Employee Found:", employee[0].emp_name);
+
+    // 🧱 Build update query - ONLY TIME FIELDS
+    const updates = [];
+    const values = [];
+
+    // Handle start_time
+    if (start_time !== undefined && start_time !== null && start_time !== "") {
+      updates.push("start_time = ?");
+      values.push(start_time);
+      console.log("⏰ Start Time to update:", start_time);
+    } else {
+      updates.push("start_time = NULL");
+      console.log("⏰ Start Time set to NULL");
+    }
+
+    // Handle end_time
+    if (end_time !== undefined && end_time !== null && end_time !== "") {
+      updates.push("end_time = ?");
+      values.push(end_time);
+      console.log("⏰ End Time to update:", end_time);
+    } else {
+      updates.push("end_time = NULL");
+      console.log("⏰ End Time set to NULL");
+    }
+
+    // Note: ip_address is completely excluded from updates
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "No time fields provided for update" });
+    }
+
+    // ⚡ Update query - ONLY time fields
+    const query = `UPDATE employee SET ${updates.join(", ")} WHERE id = ?`;
+    values.push(id);
+
+    console.log("📝 Final Query:", query);
+    console.log("📝 Query Values:", values);
+
+    // Execute the update
+    const [result] = await db.query(query, values);
+    console.log("✅ Database Update - Affected Rows:", result.affectedRows);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No records were updated" });
+    }
+
+    // 🔐 Encrypt success response
+    const responsePayload = {
+      success: true,
+      message: "Member Login Time updated successfully",
+      id: parseInt(id),
+      employee_name: employee[0].emp_name,
+      affectedRows: result.affectedRows,
+      updated_time_fields: { 
+        start_time: start_time || null, 
+        end_time: end_time || null
+      },
+      // Note: ip_address is not included in response
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    
+    console.log("✅ Update completed successfully");
+    res.status(200).json({ 
+      success: true,
+      data: encryptedResponse 
+    });
+    
+  } catch (err) {
+    console.error("❌ Error updating Member Login Time:", err);
+    
+    // 🔐 Encrypt error response
+    const errorPayload = {
+      success: false,
+      error: "Server error",
+      message: err.message
+    };
+    
+    const encryptedError = encryptData(JSON.stringify(errorPayload));
+    
+    res.status(500).json({ 
+      success: false,
+      data: encryptedError 
+    });
+  }
+};
 
 //=================  Assign/Update Branch ===================================
 exports.updateAssignBranch = async (req, res) => {

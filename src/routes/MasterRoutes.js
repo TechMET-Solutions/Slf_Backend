@@ -1,5 +1,5 @@
 const express = require("express");
-const {createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch } = require("../controller/MasterController");
+const {createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch,getMemberLoginPeriod,updateMemberLoginPeriod } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const router = express.Router();
 
@@ -45,7 +45,8 @@ router.put("/Employee_Profile/update-employee", updateEmployee);
 router.post("/Employee_Profile/delete-employee", deleteEmployee);
 router.patch("/Employee_Profile/assign-branch", updateAssignBranch);
 router.get("/Employee_Profile/assign-branch/:id", getAssignBranch);
-
+router.get("/Employee_Profile/login-period", getMemberLoginPeriod);
+router.put("/Employee_Profile/update-login-period", updateMemberLoginPeriod);
 
 // = = = = = Roles  = = = = = 
 router.post("/User-Management/add-roles", createRoles);
