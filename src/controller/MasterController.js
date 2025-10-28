@@ -1772,7 +1772,6 @@ exports.changeChargeProfileStatus = async (req, res) => {
 
 
 //=================  Assign/Update Branch ===================================
-// 🟩 PUT — Assign/Update Multiple Branches
 exports.updateAssignBranch = async (req, res) => {
   try {
     const encryptedPayload = req.body.data;
@@ -1818,7 +1817,6 @@ exports.updateAssignBranch = async (req, res) => {
   }
 };
 
-// 🟦 GET — Fetch Assigned Branches
 exports.getAssignBranch = async (req, res) => {
   try {
     const id = req.params.id;
