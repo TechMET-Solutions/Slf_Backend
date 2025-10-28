@@ -3,7 +3,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
-
+const path = require("path");
 // DB connection (auto-tests when imported)
 const pool = require("./config/database");
 
@@ -27,8 +27,7 @@ app.use("/Master/doc", Customer_router);
 app.use("/", cryptoRoutes);
 app.use("/Scheme", SchemeRouter);
 
-
-
+app.use("/uploadDoc/customer_documents", express.static(path.join(__dirname, "src/ImagesFolders/customer_documents")));
 // ⚠️ Route Not Found (404)
 app.use((req, res, next) => {
   res.status(404).json({
