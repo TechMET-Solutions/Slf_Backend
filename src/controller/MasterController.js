@@ -1262,7 +1262,7 @@ exports.createEmployee = async (req, res) => {
         assign_role ENUM('Emp','No role','auditor','minor role','branch manager','executive','administrator') NOT NULL,
         password VARCHAR(255) NOT NULL,
         fax VARCHAR(100),
-        emp_image VARCHAR(100) NOT NULL,
+        emp_image VAzRCHAR(100) NOT NULL,
         emp_add_prof VARCHAR(100) NOT NULL,
         emp_id_prof VARCHAR(100) NOT NULL,
         assign_branch JSON,

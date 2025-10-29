@@ -3,42 +3,60 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
-const path = require("path");
-// DB connection (auto-tests when imported)
-const pool = require("./config/database");
+const path = require('path');
 
-const { encryptData, decryptData } = require("./src/Helpers/cryptoHelper");
-const MasterRoutes = require("./src/routes/MasterRoutes");
-const cryptoRoutes = require("./src/routes/cryptoRoutes");
+// 🧩 DB connection
+const pool = require('./config/database');
 
-const Customer_router = require('./src/routes/MasterCustomer');
+// 🔐 Crypto Helpers
+const { encryptData, decryptData } = require('./src/Helpers/cryptoHelper');
+
+// 🛠️ Routes
+const MasterRoutes = require('./src/routes/MasterRoutes');
+const cryptoRoutes = require('./src/routes/cryptoRoutes');
+const CustomerRouter = require('./src/routes/MasterCustomer');
 const SchemeRouter = require('./src/routes/schemeRoutes');
+const TransactionRoutes = require('./src/routes/TransactionRouting');
 
-
-
-
-app.use(bodyParser.json());
+// 🌍 Middlewares
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(bodyParser.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use("/Master", MasterRoutes);
-app.use("/Master/doc", Customer_router);
-app.use("/", cryptoRoutes);
-app.use("/Scheme", SchemeRouter);
+// 📁 Static folders (for uploaded files)
+app.use(
+  '/uploadDoc/customer_documents',
+  express.static(path.join(__dirname, 'src/ImagesFolders/customer_documents'))
+);
 
-app.use("/uploadDoc/customer_documents", express.static(path.join(__dirname, "src/ImagesFolders/customer_documents")));
-// ⚠️ Route Not Found (404)
-app.use((req, res, next) => {
+// 🆕 Add this to serve ornament photos properly
+app.use(
+  '/uploads/ornaments',
+  express.static(path.join(__dirname, 'src/uploads/ornaments'))
+);
+
+// 📦 Route mounting
+app.use('/Master', MasterRoutes);
+app.use('/Master/doc', CustomerRouter);
+app.use('/', cryptoRoutes);
+app.use('/Scheme', SchemeRouter);
+app.use('/Transactions', TransactionRoutes);
+
+// 🧭 Root route
+app.get('/', (req, res) => res.json({ message: 'API running...' }));
+
+// ⚠️ 404 - Route Not Found
+app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Route not found",
+    message: 'Route not found',
     path: req.originalUrl,
   });
 });
 
-app.get("/", (req, res) => res.json({ message: "API running..." }));
-
-app.listen(5000, () => {
-  console.log('🚀 Server is running on port 5000');
+// 🚀 Start Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
