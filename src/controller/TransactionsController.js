@@ -72,7 +72,7 @@ exports.addLoanApplication = async (req, res) => {
         approval_date DATE,
         branch_id INT,
         Effective_Interest_Rates JSON,
-        status ENUM('Pending','Approved','Closed') DEFAULT 'Pending',
+        status ENUM('Pending','Approved','Cancelled') DEFAULT 'Pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -131,5 +131,67 @@ exports.addLoanApplication = async (req, res) => {
   } catch (error) {
     console.error("❌ Error processing loan application:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// ✅ Get All Loan Applications with Pagination + Status Filter
+exports.getLoanApplications = async (req, res) => {
+  try {
+    // 📦 Pagination setup
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // 🔍 Optional status filter (Pending, Approved, Cancelled)
+    const { status } = req.query;
+    let whereClause = "";
+    const params = [];
+
+    if (status && ["Pending", "Approved", "Cancelled"].includes(status)) {
+      whereClause = "WHERE status = ?";
+      params.push(status);
+    }
+
+    // 🧮 Total count for pagination
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) AS total FROM loan_application ${whereClause}`,
+      params
+    );
+
+    // 🧾 Fetch paginated + filtered data
+    const [rows] = await db.query(
+      `
+      SELECT 
+        id AS Loan_No,
+        Borrower AS Party_Name,
+        DATE(created_at) AS Loan_Date,
+        Loan_amount AS Loan_Amount,
+        status AS Status,
+        approved_by AS Approved_By,
+        approved_by AS Added_By
+      FROM loan_application
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+      `,
+      [...params, limit, offset]
+    );
+
+    // ✅ Response
+    res.status(200).json({
+      success: true,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching loan applications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch loan applications",
+      error: error.message,
+    });
   }
 };
