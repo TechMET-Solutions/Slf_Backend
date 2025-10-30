@@ -17,6 +17,7 @@ const cryptoRoutes = require('./src/routes/cryptoRoutes');
 const CustomerRouter = require('./src/routes/MasterCustomer');
 const SchemeRouter = require('./src/routes/schemeRoutes');
 const TransactionRoutes = require('./src/routes/TransactionRouting');
+const AuctionRoutes = require('./src/routes/AuctionRoutes');
 
 // 🌍 Middlewares
 app.use(cors());
@@ -42,6 +43,7 @@ app.use('/Master/doc', CustomerRouter);
 app.use('/', cryptoRoutes);
 app.use('/Scheme', SchemeRouter);
 app.use('/Transactions', TransactionRoutes);
+app.use('/Auction', AuctionRoutes);
 
 // 🧭 Root route
 app.get('/', (req, res) => res.json({ message: 'API running...' }));
