@@ -72,7 +72,7 @@ exports.addLoanApplication = async (req, res) => {
         approval_date DATE,
         branch_id INT,
         Effective_Interest_Rates JSON,
-        status ENUM('Pending','Approved','Cancelled') DEFAULT 'Pending',
+        status ENUM('Pending', 'Approved', 'Cancelled', 'Closed') DEFAULT 'Pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -135,7 +135,7 @@ exports.addLoanApplication = async (req, res) => {
 };
 
 
-// ✅ Get All Loan Applications with Pagination + Status Filter
+
 exports.getLoanApplications = async (req, res) => {
   try {
     // 📦 Pagination setup
@@ -143,12 +143,13 @@ exports.getLoanApplications = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // 🔍 Optional status filter (Pending, Approved, Cancelled)
+    // 🔍 Optional status filter (Include Closed status)
     const { status } = req.query;
     let whereClause = "";
     const params = [];
 
-    if (status && ["Pending", "Approved", "Cancelled"].includes(status)) {
+    // Add Closed to the allowed statuses
+    if (status && ["Pending", "Approved", "Cancelled", "Closed"].includes(status)) {
       whereClause = "WHERE status = ?";
       params.push(status);
     }
