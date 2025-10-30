@@ -73,6 +73,7 @@ exports.addLoanApplication = async (req, res) => {
         branch_id INT,
         Effective_Interest_Rates JSON,
         status ENUM('Pending', 'Approved', 'Cancelled', 'Closed') DEFAULT 'Pending',
+        remark LONGTEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -192,6 +193,58 @@ exports.getLoanApplications = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch loan applications",
+      error: error.message,
+    });
+  }
+};
+
+
+exports.cancelLoanApplication = async (req, res) => {
+  try {
+    const { remark, id } = req.body;
+
+    // Validate input
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Loan application ID is required." });
+    }
+
+    if (!remark) {
+      return res.status(400).json({ success: false, message: "Remark is required to cancel the loan." });
+    }
+
+    // Check if loan application exists
+    const [existing] = await db.query("SELECT status FROM loan_application WHERE id = ?", [id]);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: "Loan application not found." });
+    }
+
+    const currentStatus = existing[0].status;
+
+    // ✅ Only allow cancel if status is 'Pending'
+    if (currentStatus !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel a loan that is already '${currentStatus}'. Only pending loans can be cancelled.`,
+      });
+    }
+
+    // 🔄 Update status to 'Cancelled' and add remark
+    await db.query(
+      "UPDATE loan_application SET status = 'Cancelled', remark = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [remark, id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Loan application cancelled successfully.",
+      data: { id, status: "Cancelled", remark },
+    });
+  } catch (error) {
+    console.error("❌ Error cancelling loan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while cancelling loan application.",
       error: error.message,
     });
   }
