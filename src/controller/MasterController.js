@@ -300,6 +300,7 @@ exports.AddItemProfileList = async (req, res) => {
     const {
       code,
       name,
+      print_name,
       added_by,
       add_on,
       modified_by,
@@ -319,6 +320,7 @@ exports.AddItemProfileList = async (req, res) => {
             id INT AUTO_INCREMENT PRIMARY KEY,
             code VARCHAR(50) NOT NULL,
             name VARCHAR(255) NOT NULL,
+            print_name VARCHAR(255) NOT NULL,
             added_by VARCHAR(100),
             add_on VARCHAR(50),
             modified_by VARCHAR(100) NOT NULL,
@@ -331,21 +333,23 @@ exports.AddItemProfileList = async (req, res) => {
 
     // ✅ Insert new item (if no status provided → default true)
     const insertQuery = `
-        INSERT INTO item_profile_list 
-        (code, name, added_by, add_on, modified_by, modified_on, remark, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+  INSERT INTO item_profile_list 
+  (code, name,print_name, added_by, add_on, modified_by, modified_on, remark, status)
+  VALUES (?, ?, ?, ?, ?, ?, ?,?, ?)
+`;
 
     await db.query(insertQuery, [
       code,
       name,
+      print_name,
       added_by || null,
       add_on || null,
       modified_by || "",
       modified_on || "",
       remark || null,
-      status !== undefined ? status : 1, // 👈 default true if not provided
+      status !== undefined ? status : 1,
     ]);
+
 
     // 🔒 Encrypt and send response
     const responsePayload = { message: "✅ Item added successfully" };
@@ -367,6 +371,7 @@ exports.updateItemProfile = async (req, res) => {
       id,
       code,
       name,
+      print_name,
       added_by,
       add_on,
       modified_by,
@@ -387,6 +392,10 @@ exports.updateItemProfile = async (req, res) => {
     if (name !== undefined) {
       updateFields.push("name = ?");
       updateValues.push(name);
+    }
+    if (print_name !== undefined) {
+      updateFields.push("print_name = ?");
+      updateValues.push(print_name);
     }
     if (added_by !== undefined) {
       updateFields.push("added_by = ?");
@@ -1893,7 +1902,7 @@ exports.getMemberLoginPeriod = async (req, res) => {
 exports.updateMemberLoginPeriod = async (req, res) => {
   try {
     console.log("📥 Received request body:", req.body);
-    
+
     const encryptedPayload = req.body.data;
 
     if (!encryptedPayload) {
@@ -1984,36 +1993,36 @@ exports.updateMemberLoginPeriod = async (req, res) => {
       id: parseInt(id),
       employee_name: employee[0].emp_name,
       affectedRows: result.affectedRows,
-      updated_time_fields: { 
-        start_time: start_time || null, 
+      updated_time_fields: {
+        start_time: start_time || null,
         end_time: end_time || null
       },
       // Note: ip_address is not included in response
     };
 
     const encryptedResponse = encryptData(JSON.stringify(responsePayload));
-    
+
     console.log("✅ Update completed successfully");
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      data: encryptedResponse 
+      data: encryptedResponse
     });
-    
+
   } catch (err) {
     console.error("❌ Error updating Member Login Time:", err);
-    
+
     // 🔐 Encrypt error response
     const errorPayload = {
       success: false,
       error: "Server error",
       message: err.message
     };
-    
+
     const encryptedError = encryptData(JSON.stringify(errorPayload));
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      data: encryptedError 
+      data: encryptedError
     });
   }
 };
