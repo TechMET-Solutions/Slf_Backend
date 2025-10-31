@@ -1,7 +1,7 @@
 const db = require("../../config/database");
 const { encryptData, decryptData } = require("../Helpers/cryptoHelper");
 const path = require("path");
- 
+
 exports.registerBidder = async (req, res) => {
     try {
 
@@ -22,7 +22,8 @@ exports.registerBidder = async (req, res) => {
             bank_name,
             account_no,
             ifsc_code,
-            account_holder_name
+            account_holder_name,
+            bank_address
         } = req.body;
 
         // Handle uploaded files from multer
@@ -37,7 +38,7 @@ exports.registerBidder = async (req, res) => {
 
         // Create table if not exists
         const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS bidders (
+            CREATE TABLE IF NOT EXISTS bidders_details (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 bidder_name VARCHAR(100) NOT NULL,
                 mobile_no VARCHAR(15) NOT NULL,
@@ -58,6 +59,7 @@ exports.registerBidder = async (req, res) => {
                 account_no VARCHAR(30),
                 ifsc_code VARCHAR(15),
                 account_holder_name VARCHAR(100),
+                bank_address VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `;
@@ -66,14 +68,14 @@ exports.registerBidder = async (req, res) => {
 
         // Insert new bidder data
         const insertQuery = `
-            INSERT INTO bidders (
+            INSERT INTO bidders_details (
                 bidder_name, mobile_no, alt_mob_no, email,
                 personal_address, shop_address, landline_no, landline_no2,
                 firm_name, gst_no, aadhar_no, pan_no,
                 aadharFile, panFile, bidder_photo,
-                bank_name, account_no, ifsc_code, account_holder_name
+                bank_name, account_no, ifsc_code, account_holder_name,bank_address
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);
         `;
 
         const values = [
@@ -81,7 +83,7 @@ exports.registerBidder = async (req, res) => {
             personal_address, shop_address, landline_no, landline_no2,
             firm_name, gst_no, aadhar_no, pan_no,
             aadharFile, panFile, bidder_photo,
-            bank_name, account_no, ifsc_code, account_holder_name
+            bank_name, account_no, ifsc_code, account_holder_name, bank_address
         ];
 
         const [result] = await db.query(insertQuery, values);
@@ -117,7 +119,8 @@ exports.updateBidder = async (req, res) => {
             bank_name,
             account_no,
             ifsc_code,
-            account_holder_name
+            account_holder_name,
+            bank_address
         } = req.body;
 
         // Handle new file uploads (if provided)
@@ -126,7 +129,7 @@ exports.updateBidder = async (req, res) => {
         const bidder_photo = req.files?.bidder_photo ? req.files.bidder_photo[0].filename : null;
 
         // Ensure the bidder exists
-        const [existing] = await db.query("SELECT * FROM bidders WHERE id = ?", [id]);
+        const [existing] = await db.query("SELECT * FROM bidders_details WHERE id = ?", [id]);
         if (!existing.length) {
             return res.status(404).json({ message: "Bidder not found" });
         }
@@ -158,6 +161,7 @@ exports.updateBidder = async (req, res) => {
         addField("account_no", account_no);
         addField("ifsc_code", ifsc_code);
         addField("account_holder_name", account_holder_name);
+        addField("bank_address", bank_address);
         addField("aadharFile", aadharFile);
         addField("panFile", panFile);
         addField("bidder_photo", bidder_photo);
@@ -166,7 +170,7 @@ exports.updateBidder = async (req, res) => {
             return res.status(400).json({ message: "No fields to update" });
         }
 
-        const query = `UPDATE bidders SET ${fields.join(", ")} WHERE id = ?`;
+        const query = `UPDATE bidders_details SET ${fields.join(", ")} WHERE id = ?`;
         values.push(id);
 
         await db.query(query, values);
@@ -183,14 +187,30 @@ exports.viewBidder = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const [rows] = await db.query("SELECT * FROM bidders WHERE id = ?", [id]);
+        // Dynamically detect protocol + host (works locally & in production)
+        const baseUrl = `${req.protocol}://${req.get("host")}/bidderDoc/bidder_documents/`;
+        // const baseUrl = `${req.protocol}://${req.get("host")}/bidderDoc/bidder_documents/`;
+
+        const [rows] = await db.query("SELECT * FROM bidders_details WHERE id = ?", [id]);
         if (!rows.length) {
             return res.status(404).json({ message: "Bidder not found" });
         }
 
+        const bidder = rows[0];
+
+        // List of file fields that need full URLs
+        const fileFields = ["aadharFile", "panFile", "bidder_photo"];
+
+        // Replace filenames with full URLs if they exist
+        fileFields.forEach((field) => {
+            if (bidder[field]) {
+                bidder[field] = baseUrl + bidder[field];
+            }
+        });
+
         res.json({
             message: "✅ Bidder retrieved successfully",
-            bidder: rows[0]
+            bidder
         });
     } catch (error) {
         console.error("❌ Error viewing bidder:", error);
@@ -198,15 +218,17 @@ exports.viewBidder = async (req, res) => {
     }
 };
 
+
+
 // 📋 Get all bidders
 exports.getAllBidder = async (req, res) => {
     try {
         // 📦 Pagination parameters (default: page=1, limit=10)
-    // const page = parseInt(req.query.page) || 1;
-    // const limit = parseInt(req.query.limit) || 10;
-    // const offset = (page - 1) * limit;
-    
-        const [rows] = await db.query("SELECT * FROM bidders ORDER BY id DESC");
+        // const page = parseInt(req.query.page) || 1;
+        // const limit = parseInt(req.query.limit) || 10;
+        // const offset = (page - 1) * limit;
+
+        const [rows] = await db.query("SELECT * FROM bidders_details ORDER BY id DESC");
         res.json({
             message: "✅ All bidders fetched successfully",
             count: rows.length,

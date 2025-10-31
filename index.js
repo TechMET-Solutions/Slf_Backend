@@ -36,6 +36,11 @@ app.use(
   '/uploads/ornaments',
   express.static(path.join(__dirname, 'src/uploads/ornaments'))
 );
+// bidder_documents
+app.use(
+  '/bidderDoc/bidder_documents',
+  express.static(path.join(__dirname, 'src/ImagesFolders/bidder_documents'))
+);
 
 // 📦 Route mounting
 app.use('/Master', MasterRoutes);
