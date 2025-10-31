@@ -342,3 +342,113 @@ exports.getCustomerRemark = async (req, res) => {
     });
   }
 };
+
+
+
+exports.addLoanDocument = async (req, res) => {
+  try {
+    const { loan_id, file_description, uploaded_by } = req.body;
+    const file = req.file;
+
+    // 🧩 Validation
+    if (!loan_id || !file) {
+      return res.status(400).json({
+        success: false,
+        message: "loan_id and document file are required.",
+      });
+    }
+
+    // 🏗️ Create Table if Not Exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS loan_documents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        loan_id INT NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        file_description TEXT,
+        uploaded_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        uploaded_by VARCHAR(100),
+        document LONGTEXT,
+        FOREIGN KEY (loan_id) REFERENCES loan_application(id) ON DELETE CASCADE
+      );
+    `;
+    await db.query(createTableQuery);
+
+    // 📄 File details
+    const file_name = file.originalname;
+    const document = `${file.filename}`; // store relative path
+
+    // 💾 Insert into DB
+    const insertQuery = `
+      INSERT INTO loan_documents 
+      (loan_id, file_name, file_description, uploaded_date, uploaded_by, document)
+      VALUES (?, ?, ?, NOW(), ?, ?)
+    `;
+
+    const [result] = await db.query(insertQuery, [
+      loan_id,
+      file_name,
+      file_description || null,
+      uploaded_by || "System",
+      document,
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: "Loan document uploaded successfully.",
+      document_id: result.insertId,
+      file_path: document,
+    });
+  } catch (error) {
+    console.error("Error adding loan document:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while uploading document.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getLoanDocumentsByLoanId = async (req, res) => {
+  try {
+    const { loan_id } = req.params;
+
+    // 🧩 Validation
+    if (!loan_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Loan ID is required in params.",
+      });
+    }
+
+    // 🔍 Fetch documents for given loan_id
+    const query = `
+      SELECT id, loan_id, file_name, file_description, uploaded_date, uploaded_by, document 
+      FROM loan_documents 
+      WHERE loan_id = ?
+      ORDER BY uploaded_date DESC
+    `;
+
+    const [rows] = await db.query(query, [loan_id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No documents found for this Loan ID.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Loan documents fetched successfully.",
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error("Error fetching loan documents:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching loan documents.",
+      error: error.message,
+    });
+  }
+};
