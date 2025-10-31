@@ -1,5 +1,5 @@
 const express = require("express");
-const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const router = express.Router();
@@ -77,6 +77,12 @@ router.put("/updateChargesProfile", updateChargeProfile);
 
 // ✅ Change only the status (isActive) of a charge profile
 router.patch("/statusChangeChargesProfile", changeChargeProfileStatus);
+
+
+router.post("/save_Roles", saveRolePermissions);
+
+// ✅ Get permissions by role_id
+router.get("/Getrole/:role_id", getRolePermissions);
 
 
 module.exports = router;
