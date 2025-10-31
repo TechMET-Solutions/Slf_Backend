@@ -166,6 +166,7 @@ exports.getLoanApplications = async (req, res) => {
       `
       SELECT 
         id AS Loan_No,
+        BorrowerId,
         Borrower AS Party_Name,
         DATE(created_at) AS Loan_Date,
         Loan_amount AS Loan_Amount,
