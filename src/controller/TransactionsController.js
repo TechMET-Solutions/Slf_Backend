@@ -135,8 +135,6 @@ exports.addLoanApplication = async (req, res) => {
   }
 };
 
-
-
 exports.getLoanApplications = async (req, res) => {
   try {
     // 📦 Pagination setup
@@ -199,7 +197,6 @@ exports.getLoanApplications = async (req, res) => {
   }
 };
 
-
 exports.cancelLoanApplication = async (req, res) => {
   try {
     const { remark, id } = req.body;
@@ -251,7 +248,6 @@ exports.cancelLoanApplication = async (req, res) => {
   }
 };
 
-
 exports.getLoanRemark = async (req, res) => {
   try {
     const { id } = req.params;
@@ -297,8 +293,6 @@ exports.getLoanRemark = async (req, res) => {
   }
 };
 
-
-
 exports.getCustomerRemark = async (req, res) => {
   try {
     // 1. Get the customer ID from the URL parameters (req.params)
@@ -342,8 +336,6 @@ exports.getCustomerRemark = async (req, res) => {
     });
   }
 };
-
-
 
 exports.addLoanDocument = async (req, res) => {
   try {
