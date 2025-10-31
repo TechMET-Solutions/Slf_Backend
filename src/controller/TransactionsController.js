@@ -295,3 +295,51 @@ exports.getLoanRemark = async (req, res) => {
     });
   }
 };
+
+// Assuming 'db' is your database connection pool and these are part of a controller exports object
+
+// Assuming 'db' is your database connection pool and these are part of a controller exports object
+
+exports.getCustomerRemark = async (req, res) => {
+  try {
+    // 1. Get the customer ID from the URL parameters (req.params)
+    const { id } = req.params; 
+
+    // Validate input
+    if (!id) {
+      // While id should always be present if the route is defined correctly, this check is good practice
+      return res.status(400).json({ success: false, message: "Customer ID is required in the URL." });
+    }
+
+    // 2. Perform the retrieval (SELECT) operation
+    const [results] = await db.query(
+      // SELECT only the id and Remark fields
+      "SELECT id, Remark FROM customers WHERE id = ?",
+      [id]
+    );
+
+    // 3. Check if any customer was found
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: "Customer not found." });
+    }
+
+    // 4. Success response (returns the first/only result)
+    const customerData = results[0];
+
+    return res.status(200).json({
+      success: true,
+      message: `Remark for customer ID ${id} retrieved successfully.`,
+      data: {
+        id: customerData.id,
+        remark: customerData.Remark,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error retrieving customer remark:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while retrieving customer remark.",
+      error: error.message,
+    });
+  }
+};
