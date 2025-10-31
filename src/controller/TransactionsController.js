@@ -135,6 +135,177 @@ exports.addLoanApplication = async (req, res) => {
   }
 };
 
+exports.getLoanApplicationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Loan application ID is required" });
+    }
+
+    const query = `
+      SELECT 
+        id, BorrowerId, CoBorrowerId, Borrower, Scheme, Scheme_ID, Print_Name,
+        Mobile_Number, Alternate_Number, Co_Borrower, Relation, Nominee,
+        Nominee_Relation, Ornament_Photo, Pledge_Item_List, Loan_amount,
+        Doc_Charges, Net_Payable, Valuer_1, Valuer_2, Loan_Tenure, Min_Loan,
+        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates,
+        status, remark, created_at, updated_at
+      FROM loan_application 
+      WHERE id = ?
+    `;
+
+    const [results] = await db.query(query, [id]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Loan application not found" });
+    }
+
+    const loanApplication = results[0];
+    
+    // Parse JSON fields if they exist
+    if (loanApplication.Pledge_Item_List) {
+      loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List);
+    }
+    
+    if (loanApplication.Effective_Interest_Rates) {
+      loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates);
+    }
+
+    res.status(200).json({
+      message: "✅ Loan application retrieved successfully",
+      data: loanApplication
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching loan application:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.updateLoanApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      BorrowerId,
+      CoBorrowerId,
+      Borrower,
+      Scheme,
+      Scheme_ID,
+      Print_Name,
+      Mobile_Number,
+      Alternate_Number,
+      Co_Borrower,
+      Relation,
+      Nominee,
+      Nominee_Relation,
+      Pledge_Item_List,
+      Loan_amount,
+      Doc_Charges,
+      Net_Payable,
+      Valuer_1,
+      Valuer_2,
+      Loan_Tenure,
+      Min_Loan,
+      Max_Loan,
+      approved_by,
+      approval_date,
+      branch_id,
+      Effective_Interest_Rates,
+      status,
+      remark
+    } = req.body;
+
+    // 📸 Ornament photo (from multer - if new file uploaded)
+    const Ornament_Photo = req.file ? req.file.filename : undefined;
+
+    if (!id) {
+      return res.status(400).json({ message: "Loan application ID is required" });
+    }
+
+    // 🔍 Check if loan application exists
+    const checkQuery = `SELECT id FROM loan_application WHERE id = ?`;
+    const [checkResults] = await db.query(checkQuery, [id]);
+
+    if (checkResults.length === 0) {
+      return res.status(404).json({ message: "Loan application not found" });
+    }
+
+    // 🛠️ Build dynamic update query
+    let updateFields = [];
+    let updateValues = [];
+
+    // Helper function to add field to update
+    const addField = (field, value) => {
+      if (value !== undefined) {
+        updateFields.push(`${field} = ?`);
+        updateValues.push(value);
+      }
+    };
+
+    // Add all fields that are provided
+    addField('BorrowerId', BorrowerId);
+    addField('CoBorrowerId', CoBorrowerId);
+    addField('Borrower', Borrower);
+    addField('Scheme', Scheme);
+    addField('Scheme_ID', Scheme_ID);
+    addField('Print_Name', Print_Name);
+    addField('Mobile_Number', Mobile_Number);
+    addField('Alternate_Number', Alternate_Number);
+    addField('Co_Borrower', Co_Borrower);
+    addField('Relation', Relation);
+    addField('Nominee', Nominee);
+    addField('Nominee_Relation', Nominee_Relation);
+    addField('Ornament_Photo', Ornament_Photo);
+    addField('Pledge_Item_List', Pledge_Item_List ? JSON.stringify(Pledge_Item_List) : undefined);
+    addField('Loan_amount', Loan_amount);
+    addField('Doc_Charges', Doc_Charges);
+    addField('Net_Payable', Net_Payable);
+    addField('Valuer_1', Valuer_1);
+    addField('Valuer_2', Valuer_2);
+    addField('Loan_Tenure', Loan_Tenure);
+    addField('Min_Loan', Min_Loan);
+    addField('Max_Loan', Max_Loan);
+    addField('approved_by', approved_by);
+    addField('approval_date', approval_date);
+    addField('branch_id', branch_id);
+    addField('Effective_Interest_Rates', Effective_Interest_Rates ? JSON.stringify(Effective_Interest_Rates) : undefined);
+    addField('status', status);
+    addField('remark', remark);
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    // Add ID to values array
+    updateValues.push(id);
+
+    const updateQuery = `
+      UPDATE loan_application 
+      SET ${updateFields.join(', ')} 
+      WHERE id = ?
+    `;
+
+    // 🧩 Execute update
+    const [result] = await db.query(updateQuery, updateValues);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Loan application not found or no changes made" });
+    }
+
+    // 🎉 Success response
+    res.status(200).json({
+      message: "✅ Loan application updated successfully",
+      affectedRows: result.affectedRows,
+      updatedPhoto: Ornament_Photo
+    });
+
+  } catch (error) {
+    console.error("❌ Error updating loan application:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 exports.getLoanApplications = async (req, res) => {
   try {
     // 📦 Pagination setup
