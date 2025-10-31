@@ -296,9 +296,7 @@ exports.getLoanRemark = async (req, res) => {
   }
 };
 
-// Assuming 'db' is your database connection pool and these are part of a controller exports object
 
-// Assuming 'db' is your database connection pool and these are part of a controller exports object
 
 exports.getCustomerRemark = async (req, res) => {
   try {
