@@ -2590,8 +2590,8 @@ exports.updateRole = async (req, res) => {
 // 🟦 GET ALL ROLES (with Pagination)
 exports.getAllRoles = async (req, res) => {
   try {
-    // ✅ Step 1: Ensure table exists
-    const createTableQuery = `
+    // ✅ Step 1: Ensure roles table exists
+    const createRolesTableQuery = `
       CREATE TABLE IF NOT EXISTS roles (
         id INT AUTO_INCREMENT PRIMARY KEY,
         role_name VARCHAR(100) NOT NULL,
@@ -2601,31 +2601,164 @@ exports.getAllRoles = async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
-    await db.query(createTableQuery);
+    await db.query(createRolesTableQuery);
 
-    // 📦 Step 2: Pagination parameters
+    // ✅ Step 2: Ensure user_permissions table exists
+    const createUserPermissionsTableQuery = `
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_id INT NOT NULL,
+        permissions JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+      );
+    `;
+    await db.query(createUserPermissionsTableQuery);
+
+    // 📦 Step 3: Pagination setup
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // ✅ Step 3: Fetch paginated roles
-    const [rows] = await db.query(`SELECT * FROM roles ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset]);
+    // ✅ Step 4: Fetch roles with pagination
+    const [roles] = await db.query(
+      `SELECT * FROM roles ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    // ✅ Step 5: Attach permissions (parsed JSON) for each role
+    for (const role of roles) {
+      const [permResult] = await db.query(
+        `SELECT permissions FROM user_permissions WHERE role_id = ?`,
+        [role.id]
+      );
+
+      if (permResult.length > 0 && permResult[0].permissions) {
+        try {
+          // Parse the JSON string if needed
+          const parsed =
+            typeof permResult[0].permissions === "string"
+              ? JSON.parse(permResult[0].permissions)
+              : permResult[0].permissions;
+
+          role.permissions = parsed;
+        } catch (error) {
+          console.error(`⚠️ Invalid JSON for role_id ${role.id}:`, error);
+          role.permissions = {};
+        }
+      } else {
+        role.permissions = {};
+      }
+    }
+
+    // ✅ Step 6: Get total count
     const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM roles`);
 
-    // 🔒 Step 4: Encrypt response
+    // 🔒 Step 7: Encrypt response
     const responsePayload = {
-      message: rows.length > 0 ? "✅ Roles fetched successfully" : "ℹ️ No roles found",
+      message: roles.length > 0 ? "✅ Roles fetched successfully" : "ℹ️ No roles found",
       total,
       page,
       limit,
-      roles: rows,
+      roles,
     };
 
     const encryptedResponse = encryptData(JSON.stringify(responsePayload));
     res.status(200).json({ data: encryptedResponse });
-
   } catch (err) {
-    console.error("Get All Roles Error:", err);
+    console.error("❌ Get All Roles Error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
+
+exports.saveRolePermissions = async (req, res) => {
+  try {
+    // 🧩 Step 1: Create table if not exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_id INT NOT NULL,
+        permissions JSON NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    // 🧩 Step 2: Extract data
+    const { role_id, permissions } = req.body;
+    if (!role_id || !permissions) {
+      return res.status(400).json({ message: "role_id and permissions are required." });
+    }
+
+    const permissionsJson = JSON.stringify(permissions);
+
+    // 🧩 Step 3: Check if role exists
+    const [existing] = await db.query(
+      `SELECT * FROM user_permissions WHERE role_id = ?`,
+      [role_id]
+    );
+
+    if (existing.length > 0) {
+      // Update existing record
+      await db.query(
+        `UPDATE user_permissions SET permissions = ? WHERE role_id = ?`,
+        [permissionsJson, role_id]
+      );
+      // return res.status(200).json({ message: "Permissions updated successfully." });
+      return res.status(200).json({
+        success: true,
+        message: "Permissions updated successfully.",
+      });
+    } else {
+      // Insert new record
+      await db.query(
+        `INSERT INTO user_permissions (role_id, permissions) VALUES (?, ?)`,
+        [role_id, permissionsJson]
+      );
+      return res.status(201).json({
+        success: true,
+        message: "Permissions saved successfully.",
+      });
+    }
+  } catch (error) {
+    console.error("Error saving permissions:", error);
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
+
+
+exports.getRolePermissions = async (req, res) => {
+  try {
+    // Ensure table exists before query
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_id INT NOT NULL,
+        permissions JSON NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    const { role_id } = req.params;
+    const [rows] = await db.query(
+      `SELECT * FROM user_permissions WHERE role_id = ?`,
+      [role_id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "No permissions found for this role." });
+    }
+
+    const data = rows[0];
+    data.permissions = JSON.parse(data.permissions);
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching permissions:", error);
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
+
