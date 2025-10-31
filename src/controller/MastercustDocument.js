@@ -1,118 +1,8 @@
 const db = require("../../config/database");
 const { encryptData, decryptData } = require("../Helpers/cryptoHelper");
 const path = require("path");
+const fs = require("fs");
 
-// export.addCustomer = (req, res) => {
-// exports.addCustomer = async (req, res) => {
-//     try {
-//         const encryptedPayload = req.body.data;
-//         const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
-
-//         if (!decryptedPayload) {
-//             return res.status(400).json({ message: "Invalid or missing encrypted data" });
-//         }
-
-
-//         const files = req.files;
-//         const panFile = files?.panFile ? files.panFile[0].path : null;
-//         const aadharFile = files?.aadharFile ? files.aadharFile[0].path : null;
-//         const profileImage = files?.profileImage ? files.profileImage[0].path : null;
-//         const signature = files?.signature ? files.signature[0].path : null;
-//         const doc1 = files?.Additional_UploadDocumentFile1 ? files.Additional_UploadDocumentFile1[0].path : null;
-//         const doc2 = files?.Additional_UploadDocumentFile2 ? files.Additional_UploadDocumentFile2[0].path : null;
-
-//         const customerData = {
-//             ...decryptedPayload,
-//             panFile,
-//             aadharFile,
-//             profileImage,
-//             signature,
-//             Additional_UploadDocumentFile1: doc1,
-//             Additional_UploadDocumentFile2: doc2,
-//         };
-
-//         // SQL to create table if it doesn't exist
-//         const createTableSQL = `
-//       CREATE TABLE IF NOT EXISTS customers (
-//         id INT AUTO_INCREMENT PRIMARY KEY,
-//         panNo VARCHAR(50),
-//         panFile VARCHAR(255),
-//         aadhar VARCHAR(50),
-//         aadharFile VARCHAR(255),
-//         printName VARCHAR(100),
-//         email VARCHAR(100),
-//         mobile VARCHAR(20),
-//         otp VARCHAR(10),
-//         altMobile VARCHAR(20),
-//         dob DATE,
-//         gender VARCHAR(10),
-//         marital VARCHAR(20),
-//         gstNo VARCHAR(50),
-//         religion VARCHAR(50),
-//         education VARCHAR(50),
-//         occupation VARCHAR(50),
-//         partyType VARCHAR(50),
-//         riskCategory VARCHAR(50),
-//         firstName VARCHAR(50),
-//         middleName VARCHAR(50),
-//         lastName VARCHAR(50),
-//         fatherFirstName VARCHAR(50),
-//         fatherMiddleName VARCHAR(50),
-//         fatherLastName VARCHAR(50),
-//         landline VARCHAR(20),
-//         pep VARCHAR(10),
-//         profileImage VARCHAR(255),
-//         signature VARCHAR(255),
-//         Permanent_Address VARCHAR(255),
-//         Permanent_Pincode VARCHAR(20),
-//         Permanent_State VARCHAR(50),
-//         Permanent_City VARCHAR(50),
-//         Permanent_Country VARCHAR(50),
-//         Permanent_ResiStatus VARCHAR(50),
-//         Permanent_Resisince VARCHAR(50),
-//         Permanent_Category VARCHAR(50),
-//         Permanent_CompanyType VARCHAR(50),
-//         Permanent_IndustryType VARCHAR(50),
-//         Permanent_Businessworkingsince VARCHAR(50),
-//         Corresponding_Address VARCHAR(255),
-//         Corresponding_Pincode VARCHAR(20),
-//         Corresponding_State VARCHAR(50),
-//         Corresponding_City VARCHAR(50),
-//         Corresponding_Country VARCHAR(50),
-//         Corresponding_Area VARCHAR(50),
-//         Additional_AddressProof VARCHAR(50),
-//         Additional_AnyDetails1 VARCHAR(255),
-//         Additional_IDProof VARCHAR(50),
-//         Additional_AnyDetails2 VARCHAR(255),
-//         Additional_Reference1 VARCHAR(50),
-//         Additional_Reference2 VARCHAR(50),
-//         Additional_UploadDocumentFile1 VARCHAR(255),
-//         Additional_UploadDocumentFile2 VARCHAR(255),
-//         Nominee_NomineeName VARCHAR(50),
-//         Nominee_Relation VARCHAR(50),
-//         Nominee_Address VARCHAR(255),
-//         Nominee_State VARCHAR(50),
-//         Nominee_City VARCHAR(50),
-//         access VARCHAR(10),
-//         block BOOLEAN DEFAULT FALSE,
-//         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-//       )
-//     `;
-
-//         await db.query(createTableSQL);
-
-//         // Insert customer data
-//         const [result] = await db.query("INSERT INTO customers SET ?", customerData);
-
-//         res.status(201).json({
-//             message: "✅ Customer added successfully",
-//             customerId: result.insertId,
-//         });
-//     } catch (err) {
-//         console.error("❌ Server Error:", err);
-//         res.status(500).json({ message: "Server error", error: err.message });
-//     }
-// };
 exports.addCustomer = async (req, res) => {
     try {
         const encryptedPayload = req.body.data;
@@ -237,48 +127,136 @@ exports.addCustomer = async (req, res) => {
 
 
 
+// exports.getCustomers = async (req, res) => {
+//     try {
+//         const customerBaseUrl = "http://localhost:5000/uploadDoc/customer_documents/";
+//         const bankBaseUrl = "http://localhost:5000/uploadCheque/customer_BankData/";
+
+//         // Step 1️⃣: Get all customers
+//         const [customers] = await db.query("SELECT * FROM customers");
+
+//         // Step 2️⃣: Get all bank details
+//         const [bankDetails] = await db.query("SELECT * FROM bank_details");
+
+//         // Helper function to extract only filename
+//         const getFileName = (filePath) => {
+//             if (!filePath) return null;
+//             const parts = filePath.split(/[/\\]/);
+//             return parts[parts.length - 1];
+//         };
+
+//         // Step 3️⃣: Map customers and attach formatted data
+//         const formattedCustomers = customers.map((customer) => {
+//             // Filter bank details for this customer
+//             const customerBanks = bankDetails
+//                 .filter((b) => b.customerId === customer.id)
+//                 .map((b) => ({
+//                     ...b,
+//                     cancelCheque: b.cancelCheque
+//                         ? bankBaseUrl + getFileName(b.cancelCheque)
+//                         : null,
+//                 }));
+
+//             // Format document URLs for the customer
+//             return {
+//                 ...customer,
+//                 panFile: customer.panFile ? customerBaseUrl + getFileName(customer.panFile) : null,
+//                 aadharFile: customer.aadharFile ? customerBaseUrl + getFileName(customer.aadharFile) : null,
+//                 profileImage: customer.profileImage ? customerBaseUrl + getFileName(customer.profileImage) : null,
+//                 signature: customer.signature ? customerBaseUrl + getFileName(customer.signature) : null,
+//                 Additional_UploadDocumentFile1: customer.Additional_UploadDocumentFile1
+//                     ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile1)
+//                     : null,
+//                 Additional_UploadDocumentFile2: customer.Additional_UploadDocumentFile2
+//                     ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile2)
+//                     : null,
+//                 bankData: customerBanks, // Add array of bank records
+//             };
+//         });
+
+//         res.status(200).json(formattedCustomers);
+//     } catch (err) {
+//         console.error("❌ Database error:", err);
+//         res.status(500).json({ message: "Database error", error: err.message });
+//     }
+// };
+
+
+// Get customer list by search name
 exports.getCustomers = async (req, res) => {
     try {
-        const baseUrl = "http://localhost:5000/uploadDoc/customer_documents/";
+        const customerBaseUrl = "http://localhost:5000/uploadDoc/customer_documents/";
+        const bankBaseUrl = "http://localhost:5000/uploadCheque/customer_BankData/";
 
-        const [rows] = await db.query("SELECT * FROM customers");
+        // 🔹 Get pagination parameters (default: page=1, limit=10)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
 
-        // Format URLs properly (only filename after last backslash or slash)
-        const formattedRows = rows.map((customer) => {
-            const getFileName = (filePath) => {
-                if (!filePath) return null;
-                // Extract only the file name (handles both Windows '\' and Unix '/')
-                const parts = filePath.split(/[/\\]/);
-                return parts[parts.length - 1];
-            };
+        // Step 1️⃣: Get total count (for frontend pagination controls)
+        const [[{ total }]] = await db.query("SELECT COUNT(*) as total FROM customers");
+
+        // Step 2️⃣: Get customers for the current page
+        const [customers] = await db.query("SELECT * FROM customers LIMIT ? OFFSET ?", [limit, offset]);
+
+        // Step 3️⃣: Get all bank details once (optional optimization)
+        const [bankDetails] = await db.query("SELECT * FROM bank_details");
+
+        // Helper function to extract only filename
+        const getFileName = (filePath) => {
+            if (!filePath) return null;
+            const parts = filePath.split(/[/\\]/);
+            return parts[parts.length - 1];
+        };
+
+        // Step 4️⃣: Attach formatted bank & file URLs
+        const formattedCustomers = customers.map((customer) => {
+            const customerBanks = bankDetails
+                .filter((b) => b.customerId === customer.id)
+                .map((b) => ({
+                    ...b,
+                    cancelCheque: b.cancelCheque ? bankBaseUrl + getFileName(b.cancelCheque) : null,
+                }));
 
             return {
                 ...customer,
-                panFile: customer.panFile ? baseUrl + getFileName(customer.panFile) : null,
-                aadharFile: customer.aadharFile ? baseUrl + getFileName(customer.aadharFile) : null,
-                profileImage: customer.profileImage ? baseUrl + getFileName(customer.profileImage) : null,
-                signature: customer.signature ? baseUrl + getFileName(customer.signature) : null,
+                panFile: customer.panFile ? customerBaseUrl + getFileName(customer.panFile) : null,
+                aadharFile: customer.aadharFile ? customerBaseUrl + getFileName(customer.aadharFile) : null,
+                profileImage: customer.profileImage ? customerBaseUrl + getFileName(customer.profileImage) : null,
+                signature: customer.signature ? customerBaseUrl + getFileName(customer.signature) : null,
                 Additional_UploadDocumentFile1: customer.Additional_UploadDocumentFile1
-                    ? baseUrl + getFileName(customer.Additional_UploadDocumentFile1)
+                    ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile1)
                     : null,
                 Additional_UploadDocumentFile2: customer.Additional_UploadDocumentFile2
-                    ? baseUrl + getFileName(customer.Additional_UploadDocumentFile2)
+                    ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile2)
                     : null,
+                bankData: customerBanks,
             };
         });
 
-        res.status(200).json(formattedRows);
+        // Step 5️⃣: Return with pagination info
+        res.status(200).json({
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            data: formattedCustomers,
+        });
+
     } catch (err) {
         console.error("❌ Database error:", err);
         res.status(500).json({ message: "Database error", error: err.message });
     }
 };
 
-// Get customer list by search name
+
+
+
+
 exports.searchCustomers = async (req, res) => {
     try {
         const { search } = req.query;
-        
+
         const baseUrl = "http://localhost:5000/uploadDoc/customer_documents/";
 
         // ✅ If search term is missing or empty, return an empty array

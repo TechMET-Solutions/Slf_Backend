@@ -18,7 +18,7 @@ const CustomerRouter = require('./src/routes/MasterCustomer');
 const SchemeRouter = require('./src/routes/schemeRoutes');
 const TransactionRoutes = require('./src/routes/TransactionRouting');
 const AuctionRoutes = require('./src/routes/AuctionRoutes');
-
+const Bank_router = require('./src/routes/bankRoute');
 // 🌍 Middlewares
 app.use(cors());
 app.use(bodyParser.json());
@@ -29,6 +29,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(
   '/uploadDoc/customer_documents',
   express.static(path.join(__dirname, 'src/ImagesFolders/customer_documents'))
+);
+app.use(
+  '/uploadCheque/customer_BankData',
+  express.static(path.join(__dirname, 'src/ImagesFolders/customer_BankData'))
+);
+
+app.use(
+  '/uploadEmployeeDoc/Employee_document',
+  express.static(path.join(__dirname, 'src/ImagesFolders/Employee_document'))
 );
 
 // 🆕 Add this to serve ornament photos properly
@@ -56,7 +65,7 @@ app.use('/', cryptoRoutes);
 app.use('/Scheme', SchemeRouter);
 app.use('/Transactions', TransactionRoutes);
 app.use('/Auction', AuctionRoutes);
-
+app.use("/bank", Bank_router);
 // 🧭 Root route
 app.get('/', (req, res) => res.json({ message: 'API running...' }));
 

@@ -1,6 +1,7 @@
 const express = require("express");
-const {createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch,getMemberLoginPeriod,updateMemberLoginPeriod } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
+const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const router = express.Router();
 
 router.post("/Master_Profile/add_Branch", addBranch);
@@ -38,10 +39,26 @@ router.put('/Master_Profile/update-area', updateArea);
 router.post('/Master_Profile/delete-area', deleteArea);
 
 //  = = = = = Employee Profile = = = = =
-router.post("/Employee_Profile/add-employee", createEmployee);
+// router.post("/Employee_Profile/add-employee", createEmployee);
+
+router.post("/Employee_Profile/add-employee", uploadEmployeeDoc.fields([
+    { name: "emp_image", maxCount: 1 },
+    { name: "emp_add_prof", maxCount: 1 },
+    { name: "emp_id_prof", maxCount: 1 },
+
+]), createEmployee);
 router.get("/Employee_Profile/getAll-employees", getAllEmployee);
 // router.get("/Employee_Profile/get-employee/:id", getEmployeeById);
-router.put("/Employee_Profile/update-employee", updateEmployee);
+router.put("/Employee_Profile/update-employee",
+    uploadEmployeeDoc.fields([
+        { name: "emp_image", maxCount: 1 },
+        { name: "emp_add_prof", maxCount: 1 },
+        { name: "emp_id_prof", maxCount: 1 },
+    ]),
+    updateEmployee
+);
+router.post("/updateEmployeeStatus", updateEmployeeStatus);
+
 router.post("/Employee_Profile/delete-employee", deleteEmployee);
 router.patch("/Employee_Profile/assign-branch", updateAssignBranch);
 router.get("/Employee_Profile/assign-branch/:id", getAssignBranch);
