@@ -249,3 +249,49 @@ exports.cancelLoanApplication = async (req, res) => {
     });
   }
 };
+
+
+exports.getLoanRemark = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Loan application ID is required" 
+      });
+    }
+
+    // Minimal version - only get remark
+    const [loan] = await db.query(
+      "SELECT id, remark FROM loan_application WHERE id = ?",
+      [id]
+    );
+
+    if (loan.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found"
+      });
+    }
+
+    const loanData = loan[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: loanData.id,
+        remark: loanData.remark || ""
+      },
+      message: "Remark retrieved successfully"
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching loan remark:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching remark",
+      error: error.message
+    });
+  }
+};
