@@ -1353,6 +1353,7 @@ exports.createEmployee = async (req, res) => {
       emp_name,
       emp_id,
       mobile_no,
+      assign_role_id,
       email,
       print_name,
       Alternate_Mobile,
@@ -1369,8 +1370,7 @@ exports.createEmployee = async (req, res) => {
     } = decryptedPayload;
 
     if (
-      !pan_card || !aadhar_card || !emp_name ||
-      !mobile_no || !email || !corresponding_address ||
+      !pan_card || !aadhar_card || !emp_name || !assign_role_id || !mobile_no || !email || !corresponding_address ||
       !permanent_address || !branch || !joining_date || !designation ||
       !date_of_birth || !assign_role || !password || !emp_image ||
       !emp_add_prof || !emp_id_prof
@@ -1396,6 +1396,7 @@ exports.createEmployee = async (req, res) => {
         designation VARCHAR(100) NOT NULL,
         date_of_birth DATE NOT NULL,
         assign_role VARCHAR(100) NOT NULL,
+        assign_role_id VARCHAR(100) NOT NULL,
         password VARCHAR(255) NOT NULL,
         fax VARCHAR(100),
         emp_image VARCHAR(255) NOT NULL,
@@ -1411,15 +1412,15 @@ exports.createEmployee = async (req, res) => {
       INSERT INTO employee (
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
          corresponding_address, permanent_address, branch,
-        joining_date, designation, date_of_birth, assign_role, password,
+        joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
         fax, emp_image, emp_add_prof, emp_id_prof, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
       corresponding_address, permanent_address, branch,
-      joining_date, designation, date_of_birth, assign_role, password,
+      joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
       fax || "", emp_image, emp_add_prof, emp_id_prof,
       status !== undefined ? status : 1
     ];
@@ -1712,6 +1713,7 @@ exports.updateEmployee = async (req, res) => {
       designation,
       date_of_birth,
       assign_role,
+      assign_role_id,
       password,
       fax,
       status,
@@ -1762,6 +1764,7 @@ exports.updateEmployee = async (req, res) => {
       "designation = ?",
       "date_of_birth = ?",
       "assign_role = ?",
+      "assign_role_id = ?",
       "password = ?",
       "fax = ?",
       "emp_image = ?",
@@ -1784,6 +1787,7 @@ exports.updateEmployee = async (req, res) => {
       designation || oldData.designation,
       date_of_birth || oldData.date_of_birth,
       assign_role || oldData.assign_role,
+      assign_role || oldData.assign_role_id,
       password || oldData.password,
       fax || oldData.fax,
       emp_image,
@@ -2671,7 +2675,37 @@ exports.getAllRoles = async (req, res) => {
   }
 };
 
+exports.getRolesForSelect = async (req, res) => {
+  try {
+    // ✅ Ensure roles table exists
+    const createRolesTableQuery = `
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_name VARCHAR(100) NOT NULL,
+        system_name VARCHAR(100) NOT NULL,
+        is_system_role BOOLEAN DEFAULT 0,
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await db.query(createRolesTableQuery);
 
+    // ✅ Fetch all active roles
+    const [roles] = await db.query(
+      `SELECT id, role_name, system_name FROM roles WHERE is_active = 1 ORDER BY id DESC`
+    );
+
+    // ✅ Send plain response
+    res.status(200).json({
+      message:
+        roles.length > 0 ? "✅ Roles fetched successfully" : "ℹ️ No roles found",
+      roles,
+    });
+  } catch (err) {
+    console.error("❌ Get Roles Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 exports.saveRolePermissions = async (req, res) => {
   try {
