@@ -42,6 +42,13 @@ app.use(
   express.static(path.join(__dirname, 'src/ImagesFolders/bidder_documents'))
 );
 
+
+// 🆕 ADD THIS: Serve loan documents
+app.use(
+  '/ImagesFolders/loan_documents',
+  express.static(path.join(__dirname, 'src/ImagesFolders/loan_documents'))
+);
+
 // 📦 Route mounting
 app.use('/Master', MasterRoutes);
 app.use('/Master/doc', CustomerRouter);
