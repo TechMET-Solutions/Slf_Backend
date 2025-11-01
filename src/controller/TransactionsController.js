@@ -615,3 +615,111 @@ exports.getLoanDocumentsByLoanId = async (req, res) => {
     });
   }
 };
+
+
+exports.getAppraisalNote = async (req, res) => {
+  try {
+    const { loan_id } = req.params;
+
+    if (!loan_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Loan ID is required",
+      });
+    }
+
+    // Fetch loan application data
+    const [loanData] = await db.query(
+      `SELECT 
+          id, 
+          BorrowerId,
+          Pledge_Item_List,
+          Loan_amount,
+          remark,
+          Print_Name AS Name,
+          approval_date AS Date
+       FROM loan_application 
+       WHERE id = ?`,
+      [loan_id]
+    );
+
+    if (loanData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found",
+      });
+    }
+
+    const loan = loanData[0];
+
+    // Fetch customer signature
+    const [customerData] = await db.query(
+      `SELECT signature FROM customers WHERE id = ?`,
+      [loan.BorrowerId]
+    );
+
+    let customerSignature = "";
+    if (customerData.length > 0 && customerData[0].signature) {
+      customerSignature = customerData[0].signature;
+    }
+
+    // ✅ Parse and normalize Pledge_Item_List (handles double-encoded JSON)
+    let pledgeItems = [];
+    try {
+      let parsed = JSON.parse(loan.Pledge_Item_List || "[]");
+
+      // If parsed result is still a string, parse again
+      if (typeof parsed === "string") {
+        parsed = JSON.parse(parsed);
+      }
+
+      if (Array.isArray(parsed)) {
+        pledgeItems = parsed;
+      } else if (typeof parsed === "object" && parsed !== null) {
+        pledgeItems = [parsed];
+      } else {
+        pledgeItems = [];
+      }
+    } catch (err) {
+      console.error("❌ Error parsing Pledge_Item_List JSON:", err);
+      pledgeItems = [];
+    }
+
+    // ✅ Map ornaments
+    const ornaments = pledgeItems.map((item) => ({
+      ornamentName: item.particular || "",
+      quantity: item.nos || "",
+      grossWeight: item.gross || "",
+      netWeight: item.netWeight || "",
+      purity: item.purity || "",
+      ratePerGram: item.rate || "",
+      eligibleAmount: item.valuation || "",
+      remark: item.remark || "",
+    }));
+
+    // ✅ Structured response
+    const appraisalData = {
+      loan_id: loan.id,
+      borrower_id: loan.BorrowerId,
+      loan_amount: loan.Loan_amount,
+      date: loan.Date,
+      name: loan.Name,
+      remark: loan.remark,
+      signature: customerSignature,
+      ornaments,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Appraisal Note fetched successfully",
+      data: appraisalData,
+    });
+  } catch (error) {
+    console.error("❌ Error in getAppraisalNote:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
