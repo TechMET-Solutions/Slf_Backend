@@ -949,31 +949,35 @@ exports.addDocument = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-// ✅ Get All Documents API
+
 exports.getDocuments = async (req, res) => {
   try {
-    // Optional: Pagination query params
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50; // default 50
+    const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    // Optional: Sorting
     const sortBy = req.query.sortBy || "id";
     const order = req.query.order === "asc" ? "ASC" : "DESC";
 
-    // Fetch documents with optional pagination & sorting
     const query = `SELECT * FROM document_proofs ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`;
     const [rows] = await db.query(query, [limit, offset]);
 
-    // Encrypt response
-    const encryptedResponse = encryptData(JSON.stringify(rows));
+    const BASE_URL = process.env.BASE_URL || "http://localhost:5000/upload";
+
+    // here append base url & replace backslash
+    const formattedRows = rows.map(r => ({
+      ...r,
+      file_path: `${BASE_URL}/${r.file_path.replace(/\\/g, "/")}`
+    }));
+
+    const encryptedResponse = encryptData(JSON.stringify(formattedRows));
 
     res.status(200).json({
       message: "✅ Documents fetched successfully",
       data: encryptedResponse,
       page,
       limit,
-      total: rows.length,
+      total: formattedRows.length,
     });
   } catch (error) {
     console.error("❌ Error fetching documents:", error);
@@ -1011,6 +1015,80 @@ exports.updateDocumentStatus = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+exports.updateDocument = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
+    const payloadObj = JSON.parse(decryptedPayload);
+
+    const {
+      id,
+      proof_type,
+      proof_number,
+      is_id_proof = false,
+      is_address_proof = false,
+      added_by = null,
+      modified_by = null,
+      status = "Inactive",
+    } = payloadObj;
+
+    if (!id) {
+      return res.status(400).json({ message: "Document ID missing" });
+    }
+
+    const trimmedProofType = proof_type?.trim();
+    const trimmedProofNumber = proof_number?.trim();
+    const trimmedAddedBy = added_by?.trim() || null;
+    const trimmedModifiedBy = modified_by?.trim() || null;
+    const dbStatus = status?.trim() === "Active" ? 1 : 0;
+
+    let filePathQuery = "";
+    let filePathValue = null;
+
+    // if file uploaded then update filepath
+    if (req.file) {
+      const filePath = path.join("document_proof_images", req.file.filename);
+      filePathQuery = `, file_path = ?`;
+      filePathValue = filePath;
+    }
+
+    const updateQuery = `
+      UPDATE document_proofs
+      SET proof_type = ?, proof_number = ?, is_id_proof = ?, is_address_proof = ?, 
+          added_by = ?, modified_by = ?, status = ? ${filePathQuery}
+      WHERE id = ?
+    `;
+
+    const queryValues = [
+      trimmedProofType,
+      trimmedProofNumber,
+      is_id_proof ? 1 : 0,
+      is_address_proof ? 1 : 0,
+      trimmedAddedBy,
+      trimmedModifiedBy,
+      dbStatus,
+    ];
+
+    if (filePathValue) queryValues.push(filePathValue);
+
+    queryValues.push(id);
+
+    await db.query(updateQuery, queryValues);
+
+    const responsePayload = {
+      message: "✅ Document updated successfully",
+      documentId: id,
+      file_path: filePathValue || null,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responsePayload));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (error) {
+    console.error("❌ Error updating document:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 // ================ AREA =============================
 
@@ -1365,6 +1443,9 @@ exports.createEmployee = async (req, res) => {
       date_of_birth,
       assign_role,
       password,
+      start_time,
+      end_time,
+      ip_address,
       fax,
       status,
     } = decryptedPayload;
@@ -1402,6 +1483,9 @@ exports.createEmployee = async (req, res) => {
         emp_image VARCHAR(255) NOT NULL,
         emp_add_prof VARCHAR(255) NOT NULL,
         emp_id_prof VARCHAR(255) NOT NULL,
+        start_time TIME,
+         end_time TIME,
+        ip_address VARCHAR(50),
         status BOOLEAN DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -1413,17 +1497,27 @@ exports.createEmployee = async (req, res) => {
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
          corresponding_address, permanent_address, branch,
         joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
-        fax, emp_image, emp_add_prof, emp_id_prof, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
       corresponding_address, permanent_address, branch,
       joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
-      fax || "", emp_image, emp_add_prof, emp_id_prof,
+      fax || "",
+      emp_image,
+      emp_add_prof,
+      emp_id_prof,
+
+      // if frontend does not send, store NULL
+      start_time || null,
+      end_time || null,
+      ip_address || null,
+
       status !== undefined ? status : 1
     ];
+
 
     const [result] = await db.query(insertQuery, values);
 
@@ -2230,7 +2324,7 @@ exports.getMemberLoginPeriod = async (req, res) => {
 
     // ✅ Get paginated rows
     const [rows] = await db.query(
-      `SELECT id, emp_id, emp_name, email, start_time, end_time, ip_address
+      `SELECT id, emp_name, email, start_time, end_time, ip_address
        FROM employee
        ORDER BY id ASC
        LIMIT ? OFFSET ?`,
