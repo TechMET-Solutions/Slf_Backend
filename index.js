@@ -27,6 +27,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 📁 Static folders (for uploaded files)
 app.use(
+  '/upload/document_proof_images',
+  express.static(path.join(__dirname, 'src/ImagesFolders/document_proof_images'))
+);
+app.use(
   '/uploadDoc/customer_documents',
   express.static(path.join(__dirname, 'src/ImagesFolders/customer_documents'))
 );
