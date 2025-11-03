@@ -178,33 +178,28 @@ exports.getLoanApplicationById = async (req, res) => {
         la.created_at, 
         la.updated_at,
 
-        -- 🏦 Scheme details
-        sd.minLoanAmount, 
-        sd.maxLoanAmount, 
-        sd.loanPeriod,
-
         -- 👤 Borrower details
         c1.signature AS borrower_signature,
         c1.profileImage AS borrower_profileImage,
+        c1.Permanent_Address AS Address,
 
         -- 🤝 Co-Borrower details
         c2.signature AS coborrower_signature,
         c2.profileImage AS coborrower_profileImage
 
       FROM loan_application la
-      LEFT JOIN scheme_details sd ON la.Scheme_ID = sd.id
       LEFT JOIN customers c1 ON la.BorrowerId = c1.id
       LEFT JOIN customers c2 ON la.CoBorrowerId = c2.id
       WHERE la.id = ?
     `;
 
-    const [results] = await db.query(query, [id]);
+    const [loanResults] = await db.query(query, [id]);
 
-    if (results.length === 0) {
+    if (loanResults.length === 0) {
       return res.status(404).json({ message: "Loan application not found" });
     }
 
-    const loanApplication = results[0];
+    const loanApplication = loanResults[0];
 
     // 🧠 Parse JSON fields if they exist
     if (loanApplication.Pledge_Item_List) {
@@ -223,9 +218,21 @@ exports.getLoanApplicationById = async (req, res) => {
       }
     }
 
+    // 📦 Fetch the specific scheme data
+    const schemeId = loanApplication.Scheme_ID;
+    let schemeData = null;
+
+    if (schemeId) {
+      const [schemeResults] = await db.query(`SELECT * FROM scheme_details WHERE id = ?`, [schemeId]);
+      schemeData = schemeResults.length > 0 ? schemeResults[0] : null;
+    }
+
+    // ✅ Final Response
     res.status(200).json({
+      success: true,
       message: "✅ Loan application retrieved successfully",
-      data: loanApplication
+      loanApplication,
+      schemeData,
     });
 
   } catch (error) {
@@ -233,6 +240,7 @@ exports.getLoanApplicationById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 exports.updateLoanApplication = async (req, res) => {
