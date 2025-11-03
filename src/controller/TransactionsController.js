@@ -143,16 +143,59 @@ exports.getLoanApplicationById = async (req, res) => {
       return res.status(400).json({ message: "Loan application ID is required" });
     }
 
+    // 🧩 Query with Joins
     const query = `
       SELECT 
-        id, BorrowerId, CoBorrowerId, Borrower, Scheme, Scheme_ID, Print_Name,
-        Mobile_Number, Alternate_Number, Co_Borrower, Relation, Nominee,
-        Nominee_Relation, Ornament_Photo, Pledge_Item_List, Loan_amount,
-        Doc_Charges, Net_Payable, Valuer_1, Valuer_2, Loan_Tenure, Min_Loan,
-        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates,
-        status, remark, created_at, updated_at
-      FROM loan_application 
-      WHERE id = ?
+        la.id, 
+        la.BorrowerId, 
+        la.CoBorrowerId, 
+        la.Borrower, 
+        la.Scheme, 
+        la.Scheme_ID, 
+        la.Print_Name,
+        la.Mobile_Number, 
+        la.Alternate_Number, 
+        la.Co_Borrower, 
+        la.Relation, 
+        la.Nominee,
+        la.Nominee_Relation, 
+        la.Ornament_Photo, 
+        la.Pledge_Item_List, 
+        la.Loan_amount,
+        la.Doc_Charges, 
+        la.Net_Payable, 
+        la.Valuer_1, 
+        la.Valuer_2, 
+        la.Loan_Tenure, 
+        la.Min_Loan,
+        la.Max_Loan, 
+        la.approved_by, 
+        la.approval_date, 
+        la.branch_id, 
+        la.Effective_Interest_Rates,
+        la.status, 
+        la.remark, 
+        la.created_at, 
+        la.updated_at,
+
+        -- 🏦 Scheme details
+        sd.minLoanAmount, 
+        sd.maxLoanAmount, 
+        sd.loanPeriod,
+
+        -- 👤 Borrower details
+        c1.signature AS borrower_signature,
+        c1.profileImage AS borrower_profileImage,
+
+        -- 🤝 Co-Borrower details
+        c2.signature AS coborrower_signature,
+        c2.profileImage AS coborrower_profileImage
+
+      FROM loan_application la
+      LEFT JOIN scheme_details sd ON la.Scheme_ID = sd.id
+      LEFT JOIN customers c1 ON la.BorrowerId = c1.id
+      LEFT JOIN customers c2 ON la.CoBorrowerId = c2.id
+      WHERE la.id = ?
     `;
 
     const [results] = await db.query(query, [id]);
@@ -162,14 +205,22 @@ exports.getLoanApplicationById = async (req, res) => {
     }
 
     const loanApplication = results[0];
-    
-    // Parse JSON fields if they exist
+
+    // 🧠 Parse JSON fields if they exist
     if (loanApplication.Pledge_Item_List) {
-      loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List);
+      try {
+        loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List);
+      } catch (err) {
+        console.warn("Invalid JSON for Pledge_Item_List");
+      }
     }
-    
+
     if (loanApplication.Effective_Interest_Rates) {
-      loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates);
+      try {
+        loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates);
+      } catch (err) {
+        console.warn("Invalid JSON for Effective_Interest_Rates");
+      }
     }
 
     res.status(200).json({
@@ -182,6 +233,7 @@ exports.getLoanApplicationById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 exports.updateLoanApplication = async (req, res) => {
   try {
@@ -719,6 +771,63 @@ exports.getAppraisalNote = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// ✅ Approve Loan Application Controller
+exports.approveLoanApplication = async (req, res) => {
+  try {
+    const { id, approved_by } = req.body;
+
+    // 🔍 Validate input
+    if (!id || !approved_by) {
+      return res.status(400).json({
+        success: false,
+        message: "Loan ID and approved_by fields are required.",
+      });
+    }
+
+    // 🗓️ Set current date as approval date
+    const approval_date = new Date();
+
+    // 🧾 Update query
+    const updateQuery = `
+      UPDATE loan_application
+      SET status = 'Approved',
+          approved_by = ?,
+          approval_date = ?
+      WHERE id = ?
+    `;
+
+    // ⚙️ Execute update
+    const [result] = await db.query(updateQuery, [
+      approved_by,
+      approval_date,
+      id,
+    ]);
+
+    // 🧠 Check if record updated
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found.",
+      });
+    }
+
+    // 🎉 Success
+    res.status(200).json({
+      success: true,
+      message: "✅ Loan application approved successfully.",
+      approval_date,
+    });
+
+  } catch (error) {
+    console.error("❌ Error approving loan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while approving loan.",
       error: error.message,
     });
   }

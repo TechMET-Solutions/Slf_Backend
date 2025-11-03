@@ -1,5 +1,5 @@
 const express = require("express");
-const { addLoanApplication, getLoanApplications, cancelLoanApplication, getLoanRemark , getCustomerRemark, addLoanDocument, getLoanDocumentsByLoanId, getLoanApplicationById, updateLoanApplication, getAppraisalNote} = require("../controller/TransactionsController");
+const { addLoanApplication, getLoanApplications, cancelLoanApplication, getLoanRemark , getCustomerRemark, addLoanDocument, getLoanDocumentsByLoanId, getLoanApplicationById, updateLoanApplication, getAppraisalNote, approveLoanApplication} = require("../controller/TransactionsController");
 const uploadOrnamentPhoto = require("../middleware/uploadOrnamentPhoto");
 const uploadLoanDocument = require("../middleware/uploadLoanDocument");
 const router = express.Router();
@@ -20,4 +20,8 @@ router.put("/goldloan/updateLoan/:id", uploadOrnamentPhoto, updateLoanApplicatio
 
 
 router.get("/goldloan/appraisal-note/:loan_id", getAppraisalNote);
+router.put("/goldloan/approve-loan", approveLoanApplication);
+
+
+
 module.exports = router;

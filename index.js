@@ -43,7 +43,7 @@ app.use(
 // 🆕 Add this to serve ornament photos properly
 app.use(
   '/uploads/ornaments',
-  express.static(path.join(__dirname, 'src/uploads/ornaments'))
+  express.static(path.join(__dirname, 'src/ImagesFolders/ornaments'))
 );
 // bidder_documents
 app.use(
