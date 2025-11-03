@@ -143,6 +143,11 @@ exports.getLoanApplicationById = async (req, res) => {
       return res.status(400).json({ message: "Loan application ID is required" });
     }
 
+    // 🌐 Base URLs
+    const BASE_URL =  "http://localhost:5000";
+    const CUSTOMER_BASE = `${BASE_URL}/uploadDoc/customer_documents`;
+    const ORNAMENT_BASE = `${BASE_URL}/uploads/ornaments`;
+
     // 🧩 Query with Joins
     const query = `
       SELECT 
@@ -205,7 +210,7 @@ exports.getLoanApplicationById = async (req, res) => {
     if (loanApplication.Pledge_Item_List) {
       try {
         loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List);
-      } catch (err) {
+      } catch {
         console.warn("Invalid JSON for Pledge_Item_List");
       }
     }
@@ -213,10 +218,24 @@ exports.getLoanApplicationById = async (req, res) => {
     if (loanApplication.Effective_Interest_Rates) {
       try {
         loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates);
-      } catch (err) {
+      } catch {
         console.warn("Invalid JSON for Effective_Interest_Rates");
       }
     }
+
+    // 🖼️ Add full URLs for customer images
+    if (loanApplication.borrower_signature)
+      loanApplication.borrower_signature = `${CUSTOMER_BASE}/${loanApplication.borrower_signature}`;
+    if (loanApplication.borrower_profileImage)
+      loanApplication.borrower_profileImage = `${CUSTOMER_BASE}/${loanApplication.borrower_profileImage}`;
+    if (loanApplication.coborrower_signature)
+      loanApplication.coborrower_signature = `${CUSTOMER_BASE}/${loanApplication.coborrower_signature}`;
+    if (loanApplication.coborrower_profileImage)
+      loanApplication.coborrower_profileImage = `${CUSTOMER_BASE}/${loanApplication.coborrower_profileImage}`;
+
+    // 🧾 Ornament photo (convert to full URL)
+    if (loanApplication.Ornament_Photo)
+      loanApplication.Ornament_Photo = `${ORNAMENT_BASE}/${loanApplication.Ornament_Photo}`;
 
     // 📦 Fetch the specific scheme data
     const schemeId = loanApplication.Scheme_ID;
@@ -240,6 +259,7 @@ exports.getLoanApplicationById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
