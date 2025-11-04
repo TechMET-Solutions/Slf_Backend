@@ -117,6 +117,36 @@ exports.getBranches = async (req, res) => {
   }
 };
 
+exports.getBranchess = async (req, res) => {
+  try {
+    // ✅ Fetch all branches
+    const [branches] = await db.query(`
+      SELECT 
+        id, 
+        branch_code, 
+        branch_name 
+      FROM branch_details
+    `);
+
+    // ✅ Fetch total count (for frontend pagination)
+    const [[{ total }]] = await db.query(`
+      SELECT COUNT(*) AS total FROM branch_details
+    `);
+
+    res.status(200).json({
+      success: true,
+      total,
+      data: branches
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching branches:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
 exports.updateBranch = async (req, res) => {
   try {
     // 🔓 Decrypt incoming payload
@@ -2889,4 +2919,6 @@ exports.getRolePermissions = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error });
   }
 };
+
+
 
