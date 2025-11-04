@@ -197,8 +197,11 @@ exports.getCustomers = async (req, res) => {
         const [[{ total }]] = await db.query("SELECT COUNT(*) as total FROM customers");
 
         // Step 2️⃣: Get customers for the current page
-        const [customers] = await db.query("SELECT * FROM customers LIMIT ? OFFSET ?", [limit, offset]);
-
+        // const [customers] = await db.query("SELECT * FROM customers LIMIT ? OFFSET ?", [limit, offset]);
+        const [customers] = await db.query(
+            "SELECT * FROM customers ORDER BY createdAt DESC LIMIT ? OFFSET ?",
+            [limit, offset]
+        );
         // Step 3️⃣: Get all bank details once (optional optimization)
         const [bankDetails] = await db.query("SELECT * FROM bank_details");
 

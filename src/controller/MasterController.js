@@ -487,7 +487,7 @@ exports.getAllItemProfiles = async (req, res) => {
     // 🧭 If more than limit records, apply pagination
     if (total > limit) {
       const [paginatedRows] = await db.query(
-        `SELECT id, code, name, added_by, add_on, modified_by, modified_on, remark, status 
+        `SELECT id, code, name, added_by, add_on, print_name, modified_by, modified_on, remark, status
          FROM item_profile_list 
          ORDER BY id DESC 
          LIMIT ? OFFSET ?`,
@@ -497,7 +497,7 @@ exports.getAllItemProfiles = async (req, res) => {
     } else {
       // ⚡ If less than or equal to limit, fetch all without pagination
       const [allRows] = await db.query(
-        `SELECT id, code, name, added_by, add_on, modified_by, modified_on, remark, status 
+        `SELECT id, code, name, print_name, added_by, add_on, modified_by, modified_on, remark, status
          FROM item_profile_list 
          ORDER BY id DESC`
       );
@@ -1381,8 +1381,8 @@ exports.deleteArea = async (req, res) => {
 //         fax VARCHAR(100),
 //         emp_image VAzRCHAR(100) NOT NULL,
 //         emp_add_prof VARCHAR(100) NOT NULL,
-//         emp_id_prof VARCHAR(100) NOT NULL,
-//         assign_branch JSON,
+//         emp_id_   assigprof VARCHAR(100) NOT NULL,
+//      n_branch JSON,
 //         start_time TIME,
 //         end_time TIME,
 //  ip_address VARCHAR(50);
@@ -1514,7 +1514,10 @@ exports.createEmployee = async (req, res) => {
         emp_add_prof VARCHAR(255) NOT NULL,
         emp_id_prof VARCHAR(255) NOT NULL,
         start_time TIME,
-         end_time TIME,
+        end_time TIME,
+        sender_mobile1,
+        sender_mobile2,
+        OTP_Override BOOLEAN DEFAULT 1,
         ip_address VARCHAR(50),
         status BOOLEAN DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
