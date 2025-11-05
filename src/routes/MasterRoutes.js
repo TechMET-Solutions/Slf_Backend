@@ -1,5 +1,5 @@
 const express = require("express");
-const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles, getAllActiveEmployees, deleteChargeProfile } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../controller/Designation");
@@ -65,12 +65,15 @@ router.get("/Employee_Profile/login-period", getMemberLoginPeriod);
 router.put("/Employee_Profile/update-login-period", updateMemberLoginPeriod);
 router.post("/Employee_Profile/updateSender", updateSenderMobiles);
 router.post("/Employee_Profile/updateOTP", updateOTPOverride);
+router.get("/getActiveEmployees", getAllActiveEmployees);
+
 
 // = = = = = Designation  = = = = = 
 router.post("/Employee_Profile/create-designation", createDesignation);
 router.put("/Employee_Profile/update-designation/:id", updateDesignation);
 router.get("/Employee_Profile/get-designation", getDesignation);
 router.delete("/Employee_Profile/delete-designation/:id", deleteDesignation);
+
 
 // = = = = = Roles  = = = = = 
 router.post("/User-Management/add-roles", createRoles);
@@ -79,6 +82,7 @@ router.get("/User-Management/getAll-roles", getAllRoles);
 router.get("/User-Management/getAll-roles-options", getRolesForSelect);
 router.post("/ChargesProfile/add", addChargeProfile);
 router.get("/GetChargesProfile/get", getChargeProfiles);
+router.delete("/charge-profile/delete", deleteChargeProfile);
 router.get("/GetChargesProfile/Active", getActiveChargeProfiles);
 router.put("/updateChargesProfile", updateChargeProfile);
 

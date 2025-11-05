@@ -43,7 +43,7 @@ exports.addBranch = async (req, res) => {
         address_line1 VARCHAR(255) NOT NULL,
         mobile_no VARCHAR(15) NOT NULL,
         lead_person VARCHAR(100),
-        is_main TINYINT(1) DEFAULT 0,
+         is_main VARCHAR(20) DEFAULT 'Active',
         status VARCHAR(20) DEFAULT 'Active',
         schemes JSON, -- ✅ New column to store scheme mappings
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -1668,6 +1668,35 @@ exports.getAllEmployee = async (req, res) => {
   }
 };
 
+
+// const BASE_URL = "http://localhost:5000/uploadEmployeeDoc/Employee_document";
+
+exports.getAllActiveEmployees = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT *
+      FROM employee
+      WHERE status = 1
+      ORDER BY id DESC
+    `);
+
+    // append image url
+    const employeeData = rows.map(emp => ({
+      ...emp,
+      emp_image: emp.emp_image ? `${BASE_URL}/${emp.emp_image}` : null,
+      emp_add_prof: emp.emp_add_prof ? `${BASE_URL}/${emp.emp_add_prof}` : null,
+      emp_id_prof: emp.emp_id_prof ? `${BASE_URL}/${emp.emp_id_prof}` : null,
+    }));
+
+    const encryptedResponse = encryptData(JSON.stringify(employeeData));
+    res.status(200).json({ data: encryptedResponse });
+
+  } catch (err) {
+    console.log("❌ Error getAllActiveEmployees:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // 🟩 UPDATE EMPLOYEE
 // exports.updateEmployee = async (req, res) => {
 //   try {
@@ -2186,6 +2215,70 @@ exports.addChargeProfile = async (req, res) => {
     res.status(201).json({ data: encryptedResponse });
   } catch (err) {
     console.error("❌ Error in addChargeProfile:", err);
+    const encryptedError = encryptData(
+      JSON.stringify({ message: "Internal server error", error: err.message })
+    );
+    res.status(500).json({ data: encryptedError });
+  }
+};
+exports.deleteChargeProfile = async (req, res) => {
+  try {
+    const encryptedPayload = req.body.data;
+    if (!encryptedPayload) {
+      return res
+        .status(400)
+        .json({ error: encryptData("Missing encrypted data") });
+    }
+
+    // Decrypt incoming payload
+    const decryptedString = decryptData(encryptedPayload);
+    console.log("🔓 Decrypted String:", decryptedString);
+
+    let decryptedPayload;
+    try {
+      decryptedPayload = JSON.parse(decryptedString);
+      if (typeof decryptedPayload === "string") {
+        decryptedPayload = JSON.parse(decryptedPayload);
+      }
+    } catch (parseError) {
+      throw new Error("Invalid JSON format after decryption");
+    }
+
+    console.log("🧩 Decrypted Payload:", decryptedPayload);
+
+    const { id } = decryptedPayload;
+    if (!id) {
+      throw new Error("Missing required field: id");
+    }
+
+    // Check if the record exists
+    const [existing] = await db.query(
+      "SELECT * FROM charge_profiles WHERE id = ?",
+      [id]
+    );
+
+    if (!existing.length) {
+      return res
+        .status(404)
+        .json({
+          data: encryptData(
+            JSON.stringify({ message: "Charge profile not found" })
+          ),
+        });
+    }
+
+    // Delete the record
+    await db.query("DELETE FROM charge_profiles WHERE id = ?", [id]);
+
+    const responseData = {
+      message: "Charge profile deleted successfully",
+      id: id,
+    };
+
+    const encryptedResponse = encryptData(JSON.stringify(responseData));
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error in deleteChargeProfile:", err);
     const encryptedError = encryptData(
       JSON.stringify({ message: "Internal server error", error: err.message })
     );
