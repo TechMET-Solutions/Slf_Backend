@@ -86,21 +86,41 @@ exports.addBranch = async (req, res) => {
 };
 exports.getBranches = async (req, res) => {
   try {
-    // 📦 Get pagination parameters from query (default: page=1, limit=10)
+    // 📦 Get pagination parameters (default: page=1, limit=10)
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // ✅ Fetch total count (for frontend pagination)
-    const [[{ total }]] = await db.query(
-      "SELECT COUNT(*) AS total FROM branch_details"
-    );
+    // 🔍 Get search query (if provided)
+    const search = req.query.search ? req.query.search.trim() : "";
 
-    // ✅ Fetch paginated records
-    const [rows] = await db.query(
-      "SELECT * FROM branch_details ORDER BY id DESC LIMIT ? OFFSET ?",
-      [limit, offset]
-    );
+    // 🧠 Base query and params
+    let countQuery = "SELECT COUNT(*) AS total FROM branch_details";
+    let dataQuery = "SELECT * FROM branch_details";
+    let queryParams = [];
+
+    // ✅ If search term exists, add WHERE condition
+    if (search) {
+      const searchCondition = `
+        WHERE branch_code LIKE ? 
+        OR branch_name LIKE ? 
+        OR print_name LIKE ?
+      `;
+      countQuery += ` ${searchCondition}`;
+      dataQuery += ` ${searchCondition}`;
+      const searchParam = `%${search}%`;
+      queryParams.push(searchParam, searchParam, searchParam);
+    }
+
+    // 🧾 Add ordering, limit, and offset
+    dataQuery += " ORDER BY id DESC LIMIT ? OFFSET ?";
+    queryParams.push(limit, offset);
+
+    // ✅ Fetch total count (for pagination)
+    const [[{ total }]] = await db.query(countQuery, queryParams.slice(0, search ? 3 : 0));
+
+    // ✅ Fetch paginated + filtered data
+    const [rows] = await db.query(dataQuery, queryParams);
 
     // 🔒 Encrypt response
     const encryptedResponse = encryptData(
@@ -113,6 +133,7 @@ exports.getBranches = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 exports.getBranchess = async (req, res) => {
   try {
     // ✅ Fetch all branches
