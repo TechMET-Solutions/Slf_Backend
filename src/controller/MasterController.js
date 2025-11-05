@@ -2441,12 +2441,14 @@ exports.getMemberLoginPeriod = async (req, res) => {
   }
 };
 
+
+
+
 exports.updateMemberLoginPeriod = async (req, res) => {
   try {
     console.log("📥 Received request body:", req.body);
 
     const encryptedPayload = req.body.data;
-
     if (!encryptedPayload) {
       return res.status(400).json({ error: "Missing encrypted data" });
     }
@@ -2458,7 +2460,6 @@ exports.updateMemberLoginPeriod = async (req, res) => {
     let decryptedPayload;
     try {
       decryptedPayload = JSON.parse(decryptedString);
-      // Handle double JSON stringification if needed
       if (typeof decryptedPayload === 'string') {
         decryptedPayload = JSON.parse(decryptedPayload);
       }
@@ -2469,7 +2470,8 @@ exports.updateMemberLoginPeriod = async (req, res) => {
 
     console.log("🧩 Decrypted Payload:", decryptedPayload);
 
-    const { id, start_time, end_time } = decryptedPayload; // Removed ip_address
+    // ✅ Now include ip_address
+    const { id, start_time, end_time, ip_address } = decryptedPayload;
 
     if (!id) {
       return res.status(400).json({ error: "Employee ID is required" });
@@ -2483,7 +2485,6 @@ exports.updateMemberLoginPeriod = async (req, res) => {
 
     console.log("👤 Employee Found:", employee[0].emp_name);
 
-    // 🧱 Build update query - ONLY TIME FIELDS
     const updates = [];
     const values = [];
 
@@ -2491,80 +2492,78 @@ exports.updateMemberLoginPeriod = async (req, res) => {
     if (start_time !== undefined && start_time !== null && start_time !== "") {
       updates.push("start_time = ?");
       values.push(start_time);
-      console.log("⏰ Start Time to update:", start_time);
     } else {
       updates.push("start_time = NULL");
-      console.log("⏰ Start Time set to NULL");
     }
 
     // Handle end_time
     if (end_time !== undefined && end_time !== null && end_time !== "") {
       updates.push("end_time = ?");
       values.push(end_time);
-      console.log("⏰ End Time to update:", end_time);
     } else {
       updates.push("end_time = NULL");
-      console.log("⏰ End Time set to NULL");
     }
 
-    // Note: ip_address is completely excluded from updates
+    // ✅ Handle ip_address (new)
+    if (ip_address !== undefined && ip_address !== null && ip_address !== "") {
+      updates.push("ip_address = ?");
+      values.push(ip_address);
+      console.log("🌐 IP Address to update:", ip_address);
+    } else {
+      updates.push("ip_address = NULL");
+      console.log("🌐 IP Address set to NULL");
+    }
 
     if (updates.length === 0) {
-      return res.status(400).json({ error: "No time fields provided for update" });
+      return res.status(400).json({ error: "No fields provided for update" });
     }
 
-    // ⚡ Update query - ONLY time fields
     const query = `UPDATE employee SET ${updates.join(", ")} WHERE id = ?`;
     values.push(id);
 
     console.log("📝 Final Query:", query);
     console.log("📝 Query Values:", values);
 
-    // Execute the update
     const [result] = await db.query(query, values);
-    console.log("✅ Database Update - Affected Rows:", result.affectedRows);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "No records were updated" });
     }
 
-    // 🔐 Encrypt success response
     const responsePayload = {
       success: true,
-      message: "Member Login Time updated successfully",
+      message: "Member Login Period updated successfully",
       id: parseInt(id),
       employee_name: employee[0].emp_name,
       affectedRows: result.affectedRows,
-      updated_time_fields: {
+      updated_fields: {
         start_time: start_time || null,
-        end_time: end_time || null
+        end_time: end_time || null,
+        ip_address: ip_address || null,
       },
-      // Note: ip_address is not included in response
     };
 
     const encryptedResponse = encryptData(JSON.stringify(responsePayload));
 
-    console.log("✅ Update completed successfully");
     res.status(200).json({
       success: true,
-      data: encryptedResponse
+      data: encryptedResponse,
     });
 
   } catch (err) {
     console.error("❌ Error updating Member Login Time:", err);
 
-    // 🔐 Encrypt error response
     const errorPayload = {
       success: false,
       error: "Server error",
-      message: err.message
+      message: err.message,
     };
 
     const encryptedError = encryptData(JSON.stringify(errorPayload));
 
     res.status(500).json({
       success: false,
-      data: encryptedError
+      data: encryptedError,
     });
   }
 };
