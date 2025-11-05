@@ -1,5 +1,5 @@
 const express = require("express");
-const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../../postman/role.controller");
@@ -29,6 +29,7 @@ router.post('/Master_Profile/delete-purity', deleteProductPurity);
 router.post("/Master_Profile/add_Document", upload.none(), addDocument);
 router.get("/Master_Profile/get_document", getDocuments);
 router.post("/Master_Profile/update_document_status", updateDocumentStatus);
+router.get("/getAllDocumentProofs", getAllDocumentProofs);
 router.post("/Master_Profile/update_document", upload.none(), updateDocument);
 //  = = = = = Area = = = = =
 router.post('/Master_Profile/add-area', addArea);
@@ -78,6 +79,7 @@ router.get("/User-Management/getAll-roles", getAllRoles);
 router.get("/User-Management/getAll-roles-options", getRolesForSelect);
 router.post("/ChargesProfile/add", addChargeProfile);
 router.get("/GetChargesProfile/get", getChargeProfiles);
+router.get("/GetChargesProfile/Active", getActiveChargeProfiles);
 router.put("/updateChargesProfile", updateChargeProfile);
 
 // ✅ Change only the status (isActive) of a charge profile
