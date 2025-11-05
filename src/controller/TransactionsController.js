@@ -861,3 +861,54 @@ exports.approveLoanApplication = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+exports.searchLoans = async (req, res) => {
+  try {
+    const { keyword } = req.query;
+
+    if (!keyword || keyword.trim() === "") {
+      return res.status(400).json({ message: "Keyword is required" });
+    }
+
+    const searchTerm = `%${keyword}%`;
+
+    const [results] = await db.query(
+      `
+      SELECT 
+        id,
+        loan_no AS loanNo,
+        DATE_FORMAT(loan_date, '%d/%m/%Y') AS loanDate,
+        scheme,
+        party_name AS partyName,
+        loan_amount AS loanAmt,
+        pending_amount AS pendingAmt,
+        document_no AS documentNo,
+        DATE_FORMAT(document_date, '%d/%m/%Y') AS documentDate,
+        remark
+      FROM loans
+      WHERE 
+        loan_no LIKE ? OR
+        scheme LIKE ? OR
+        party_name LIKE ?
+      ORDER BY id DESC
+      `,
+      [searchTerm, searchTerm, searchTerm]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "No matching records found" });
+    }
+
+    res.status(200).json({
+      total: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("❌ Error searching loans:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
