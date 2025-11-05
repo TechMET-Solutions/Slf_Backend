@@ -68,9 +68,9 @@ router.post("/Employee_Profile/updateOTP", updateOTPOverride);
 
 // = = = = = Designation  = = = = = 
 router.post("/Employee_Profile/create-designation", createDesignation);
-router.put("/Employee_Profile/update-designation", updateDesignation);
+router.put("/Employee_Profile/update-designation/:id", updateDesignation);
 router.get("/Employee_Profile/get-designation", getDesignation);
-router.delete("/Employee_Profile/delate-designation", deleteDesignation);
+router.delete("/Employee_Profile/delete-designation/:id", deleteDesignation);
 
 // = = = = = Roles  = = = = = 
 router.post("/User-Management/add-roles", createRoles);
