@@ -2,7 +2,7 @@ const express = require("express");
 const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
-const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../../postman/role.controller");
+const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../controller/Designation");
 const router = express.Router();
 
 router.post("/Master_Profile/add_Branch", addBranch);
