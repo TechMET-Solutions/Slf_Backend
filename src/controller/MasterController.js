@@ -2982,3 +2982,40 @@ exports.getRolePermissions = async (req, res) => {
   }
 };
 
+
+
+
+// 📦 Get all active charge profiles
+exports.getActiveChargeProfiles = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        id,
+        code,
+        description,
+        amount,
+        account
+      FROM charge_profiles
+      WHERE isActive = TRUE
+    `;
+
+    const [rows] = await db.query(query);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "No active charge profiles found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      total: rows.length,
+      data: rows
+    });
+  } catch (error) {
+    console.error("❌ Error fetching active charge profiles:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
