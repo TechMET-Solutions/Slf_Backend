@@ -989,6 +989,38 @@ exports.getDocuments = async (req, res) => {
   }
 };
 
+exports.getAllDocumentProofs = async (req, res) => {
+  try {
+
+    const query = `
+      SELECT 
+        id,
+        proof_type,
+        is_id_proof,
+        is_address_proof,
+        added_by,
+        modified_by,
+        status,
+        added_on,
+        modified_on
+      FROM document_proofs
+      ORDER BY is_address_proof ASC
+    `;
+
+    const [rows] = await db.query(query);
+
+    res.status(200).json({
+      message: "Documents fetched successfully",
+      data: rows,
+      total: rows.length
+    });
+
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 exports.updateDocumentStatus = async (req, res) => {
   try {
@@ -1434,12 +1466,13 @@ exports.createEmployee = async (req, res) => {
       assign_role,
       password,
       start_time,
+      assign_branch,
       end_time,
       ip_address,
       fax,
       status,
     } = decryptedPayload;
-
+    console.log(decryptedPayload, "decryptedPayload")
     // 🔒 Validation
     if (
       !pan_card || !aadhar_card || !emp_name || !assign_role_id ||
@@ -1475,6 +1508,7 @@ exports.createEmployee = async (req, res) => {
         emp_image VARCHAR(255) NOT NULL,
         emp_add_prof VARCHAR(255) NOT NULL,
         emp_id_prof VARCHAR(255) NOT NULL,
+        assign_branch JSON,
         start_time TIME,
         end_time TIME,
         sender_mobile1 VARCHAR(15),
@@ -1493,8 +1527,8 @@ exports.createEmployee = async (req, res) => {
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
         corresponding_address, permanent_address, branch, branch_id,
         joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
-        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fax, emp_image, emp_add_prof, emp_id_prof, assign_branch, start_time, end_time, ip_address, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -1518,6 +1552,7 @@ exports.createEmployee = async (req, res) => {
       emp_image,
       emp_add_prof,
       emp_id_prof,
+      assign_branch || null,
       start_time || null,
       end_time || null,
       ip_address || null,
@@ -2042,7 +2077,7 @@ exports.updateOTPOverride = async (req, res) => {
     const { empId, value } = req.body; // value = 0 or 1 Boolean
 
     await db.query(
-      `UPDATE employee_profile SET OTP_Override=? WHERE id=?`,
+      `UPDATE employee SET OTP_Override=? WHERE id=?`,
       [value, empId]
     );
 
