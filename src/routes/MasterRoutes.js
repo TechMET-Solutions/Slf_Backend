@@ -1,5 +1,5 @@
 const express = require("express");
-const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles, getAllActiveEmployees, deleteChargeProfile } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess, getAllDocumentProofs, getActiveChargeProfiles, getAllActiveEmployees, deleteChargeProfile, getAllProductPuritiesNoPagination, getLatestGoldRates, getLatestGoldRate } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../controller/Designation");
@@ -17,11 +17,13 @@ router.put("/Master_Profile/edit_Item_Status", editItemProfileStatus);
 router.put("/Master_Profile/update_Item", updateItemProfile);
 router.get("/Master_Profile/all_Item", getAllItemProfiles);
 router.get("/Master_Profile/get_gold_rate_list", getGoldRates);
+router.get("/Master_Profile/latest-gold-rate", getLatestGoldRate);
 router.post("/Master_Profile/gold_rate", addGoldRate);
 
 // // = = = = = Product Purity = = = = =
 router.post('/Master_Profile/add-purity', addProductPurity);
 router.get('/Master_Profile/get-purity', getAllProductPurities);
+router.get("/getall-purity", getAllProductPuritiesNoPagination);
 router.put('/Master_Profile/update-purity', updateProductPurity);
 router.post('/Master_Profile/delete-purity', deleteProductPurity);
 // router.delete('/Master_Profile/update-purity-status', updateProductPurityStatus);

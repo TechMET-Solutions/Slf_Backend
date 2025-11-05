@@ -481,6 +481,7 @@ exports.updateItemProfile = async (req, res) => {
   }
 };
 
+
 exports.getAllItemProfiles = async (req, res) => {
   try {
     // 📦 Pagination parameters (default: page=1, limit=10)
@@ -565,6 +566,7 @@ exports.editItemProfileStatus = async (req, res) => {
   }
 };
 
+
 exports.addGoldRate = async (req, res) => {
   try {
     // ✅ Decrypt incoming request
@@ -604,6 +606,23 @@ exports.addGoldRate = async (req, res) => {
     res.status(201).json({ data: encryptedResponse });
   } catch (error) {
     console.error("❌ Error in addGoldRate:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+exports.getLatestGoldRate = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, push_date, gold_rate, added_on, added_by
+       FROM gold_rate_list
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    res.status(200).json({ data: rows[0] || null });
+  } catch (error) {
+    console.error("❌ Error fetching latest gold rate:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -772,6 +791,27 @@ exports.getAllProductPurities = async (req, res) => {
     res.status(200).json({ data: encryptedResponse });
   } catch (err) {
     console.error("❌ Error fetching Product Purity:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+exports.getAllProductPuritiesNoPagination = async (req, res) => {
+  try {
+    // Fetch all product purities from DB
+    const [rows] = await db.query(
+      `SELECT * FROM product_purity ORDER BY id DESC`
+    );
+
+    // Encrypt the response
+    const encryptedResponse = encryptData(
+      JSON.stringify({
+        items: rows,
+        total: rows.length,
+      })
+    );
+
+    res.status(200).json({ data: encryptedResponse });
+  } catch (err) {
+    console.error("❌ Error fetching all Product Purities:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
