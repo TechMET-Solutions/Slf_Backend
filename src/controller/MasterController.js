@@ -15,7 +15,6 @@ exports.addBranch = async (req, res) => {
       branch_name,
       print_name,
       address_line1,
-      address_line3,
       mobile_no,
       lead_person,
       is_main,
@@ -28,7 +27,7 @@ exports.addBranch = async (req, res) => {
       !branch_name ||
       !print_name ||
       !address_line1 ||
-      !address_line3 ||
+
       !mobile_no
     ) {
       return res.status(400).json({ message: "Required fields are missing" });
@@ -42,7 +41,6 @@ exports.addBranch = async (req, res) => {
         branch_name VARCHAR(100) NOT NULL,
         print_name VARCHAR(100) NOT NULL,
         address_line1 VARCHAR(255) NOT NULL,
-        address_line3 VARCHAR(255) NOT NULL,
         mobile_no VARCHAR(15) NOT NULL,
         lead_person VARCHAR(100),
         is_main TINYINT(1) DEFAULT 0,
@@ -56,8 +54,8 @@ exports.addBranch = async (req, res) => {
     // ✅ Insert branch with scheme data
     const insertQuery = `
       INSERT INTO branch_details
-      (branch_code, branch_name, print_name, address_line1, address_line3, mobile_no, lead_person, is_main, status, schemes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (branch_code, branch_name, print_name, address_line1,  mobile_no, lead_person, is_main, status, schemes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(insertQuery, [
@@ -65,7 +63,6 @@ exports.addBranch = async (req, res) => {
       branch_name,
       print_name,
       address_line1,
-      address_line3,
       mobile_no,
       lead_person,
       is_main,
@@ -116,7 +113,6 @@ exports.getBranches = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 exports.getBranchess = async (req, res) => {
   try {
     // ✅ Fetch all branches
@@ -144,9 +140,6 @@ exports.getBranchess = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
-
 exports.updateBranch = async (req, res) => {
   try {
     // 🔓 Decrypt incoming payload
@@ -161,13 +154,12 @@ exports.updateBranch = async (req, res) => {
       branch_name,
       print_name,
       address_line1,
-      address_line3,
       mobile_no,
       lead_person,
       is_main,
       status,
     } = decrypted;
-
+    console.log(decrypted, "decrypted")
     if (!id) {
       return res.status(400).json({ message: "Branch ID is required" });
     }
@@ -175,7 +167,7 @@ exports.updateBranch = async (req, res) => {
     // 🧩 Update query
     const [result] = await db.query(
       `UPDATE branch_details 
-       SET branch_code=?, branch_name=?, print_name=?, address_line1=?, address_line3=?, 
+       SET branch_code=?, branch_name=?, print_name=?, address_line1=?,  
            mobile_no=?, lead_person=?, is_main=?, status=? 
        WHERE id=?`,
       [
@@ -183,7 +175,6 @@ exports.updateBranch = async (req, res) => {
         branch_name,
         print_name,
         address_line1,
-        address_line3,
         mobile_no,
         lead_person,
         is_main ? "1" : "0",
@@ -243,13 +234,13 @@ exports.updateBranchSchemes = async (req, res) => {
       return res.status(400).json({ message: "Missing encrypted payload (data)" });
     }
 
-    // 🔓 Step 1: Decrypt
+
     let decryptedPayload = decryptData(encryptedPayload);
     console.log("🧩 Raw decryptedPayload:", decryptedPayload);
 
-    // 🧠 Step 2: Ensure it's a JS object (double-parse safe)
+
     try {
-      // Try parsing once
+
       if (typeof decryptedPayload === "string") {
         decryptedPayload = JSON.parse(decryptedPayload);
       }
@@ -281,7 +272,6 @@ exports.updateBranchSchemes = async (req, res) => {
         branch_name VARCHAR(100) NOT NULL,
         print_name VARCHAR(100) NOT NULL,
         address_line1 VARCHAR(255) NOT NULL,
-        address_line3 VARCHAR(255) NOT NULL,
         mobile_no VARCHAR(15) NOT NULL,
         lead_person VARCHAR(100),
         is_main TINYINT(1) DEFAULT 0,
@@ -899,6 +889,7 @@ exports.deleteProductPurity = async (req, res) => {
 
 exports.addDocument = async (req, res) => {
   try {
+    console.log("BODY:", req.body);
     const encryptedPayload = req.body.data;
     const decryptedPayload = JSON.parse(decryptData(encryptedPayload));
 
@@ -906,39 +897,33 @@ exports.addDocument = async (req, res) => {
 
     const {
       proof_type,
-      proof_number,
       is_id_proof = false,
       is_address_proof = false,
       added_by = null,
       modified_by = null,
       status = "Inactive",
     } = payloadObj;
-
-    console.log(proof_type); // "Aadhar Card"
-    console.log(proof_number); // "7620075780"
+    console.log(payloadObj, "payloadObj")
 
     const trimmedProofType = proof_type?.trim();
-    const trimmedProofNumber = proof_number?.trim();
     const trimmedAddedBy = added_by?.trim() || null;
     const trimmedModifiedBy = modified_by?.trim() || null;
     const dbStatus = status?.trim() === "Active" ? 1 : 0;
 
-    if (!trimmedProofType || !trimmedProofNumber) {
+    if (!trimmedProofType) {
       return res
         .status(400)
         .json({
-          message: "Required fields missing: proof_type or proof_number",
+          message: "Required fields missing: proof_type.",
         });
     }
 
-    const filePath = path.join("document_proof_images", req.file.filename);
+    // const filePath = path.join("document_proof_images", req.file.filename);
 
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS document_proofs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         proof_type VARCHAR(100) NOT NULL,
-        proof_number VARCHAR(100) NOT NULL,
-        file_path VARCHAR(255) NOT NULL,
         is_id_proof TINYINT(1) DEFAULT 0,
         is_address_proof TINYINT(1) DEFAULT 0,
         added_by VARCHAR(100),
@@ -952,13 +937,11 @@ exports.addDocument = async (req, res) => {
 
     const insertQuery = `
       INSERT INTO document_proofs
-      (proof_type, proof_number, file_path, is_id_proof, is_address_proof, added_by, modified_by, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (proof_type, is_id_proof, is_address_proof, added_by, modified_by, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     const [result] = await db.query(insertQuery, [
       trimmedProofType,
-      trimmedProofNumber,
-      filePath,
       is_id_proof ? 1 : 0,
       is_address_proof ? 1 : 0,
       trimmedAddedBy,
@@ -969,7 +952,6 @@ exports.addDocument = async (req, res) => {
     const responsePayload = {
       message: "✅ Document proof added successfully",
       documentId: result.insertId,
-      file_path: filePath,
     };
 
     const encryptedResponse = encryptData(JSON.stringify(responsePayload));
@@ -992,28 +974,21 @@ exports.getDocuments = async (req, res) => {
     const query = `SELECT * FROM document_proofs ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`;
     const [rows] = await db.query(query, [limit, offset]);
 
-    const BASE_URL = process.env.BASE_URL || "http://localhost:5000/upload";
-
-    // here append base url & replace backslash
-    const formattedRows = rows.map(r => ({
-      ...r,
-      file_path: `${BASE_URL}/${r.file_path.replace(/\\/g, "/")}`
-    }));
-
-    const encryptedResponse = encryptData(JSON.stringify(formattedRows));
+    const encryptedResponse = encryptData(JSON.stringify(rows));
 
     res.status(200).json({
       message: "✅ Documents fetched successfully",
       data: encryptedResponse,
       page,
       limit,
-      total: formattedRows.length,
+      total: rows.length,
     });
   } catch (error) {
     console.error("❌ Error fetching documents:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 exports.updateDocumentStatus = async (req, res) => {
   try {
@@ -1054,7 +1029,6 @@ exports.updateDocument = async (req, res) => {
     const {
       id,
       proof_type,
-      proof_number,
       is_id_proof = false,
       is_address_proof = false,
       added_by = null,
@@ -1067,57 +1041,43 @@ exports.updateDocument = async (req, res) => {
     }
 
     const trimmedProofType = proof_type?.trim();
-    const trimmedProofNumber = proof_number?.trim();
     const trimmedAddedBy = added_by?.trim() || null;
     const trimmedModifiedBy = modified_by?.trim() || null;
     const dbStatus = status?.trim() === "Active" ? 1 : 0;
 
-    let filePathQuery = "";
-    let filePathValue = null;
-
-    // if file uploaded then update filepath
-    if (req.file) {
-      const filePath = path.join("document_proof_images", req.file.filename);
-      filePathQuery = `, file_path = ?`;
-      filePathValue = filePath;
-    }
-
     const updateQuery = `
       UPDATE document_proofs
-      SET proof_type = ?, proof_number = ?, is_id_proof = ?, is_address_proof = ?, 
-          added_by = ?, modified_by = ?, status = ? ${filePathQuery}
+      SET proof_type = ?, is_id_proof = ?, is_address_proof = ?, 
+          added_by = ?, modified_by = ?, status = ?
       WHERE id = ?
     `;
 
     const queryValues = [
       trimmedProofType,
-      trimmedProofNumber,
       is_id_proof ? 1 : 0,
       is_address_proof ? 1 : 0,
       trimmedAddedBy,
       trimmedModifiedBy,
       dbStatus,
+      id
     ];
-
-    if (filePathValue) queryValues.push(filePathValue);
-
-    queryValues.push(id);
 
     await db.query(updateQuery, queryValues);
 
     const responsePayload = {
       message: "✅ Document updated successfully",
-      documentId: id,
-      file_path: filePathValue || null,
+      documentId: id
     };
 
     const encryptedResponse = encryptData(JSON.stringify(responsePayload));
     res.status(200).json({ data: encryptedResponse });
+
   } catch (error) {
     console.error("❌ Error updating document:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 // ================ AREA =============================
@@ -1473,6 +1433,7 @@ exports.createEmployee = async (req, res) => {
       date_of_birth,
       assign_role,
       password,
+      assign_branch,
       start_time,
       end_time,
       ip_address,
@@ -1508,6 +1469,7 @@ exports.createEmployee = async (req, res) => {
         date_of_birth DATE NOT NULL,
         assign_role VARCHAR(100) NOT NULL,
         assign_role_id VARCHAR(100) NOT NULL,
+        assign_branch JSON,
         password VARCHAR(255) NOT NULL,
         fax VARCHAR(100),
         emp_image VARCHAR(255) NOT NULL,
@@ -1515,8 +1477,8 @@ exports.createEmployee = async (req, res) => {
         emp_id_prof VARCHAR(255) NOT NULL,
         start_time TIME,
         end_time TIME,
-        sender_mobile1,
-        sender_mobile2,
+        sender_mobile1 VARCHAR(20),
+        sender_mobile2 VARCHAR(20),
         OTP_Override BOOLEAN DEFAULT 1,
         ip_address VARCHAR(50),
         status BOOLEAN DEFAULT 1,
@@ -1529,24 +1491,27 @@ exports.createEmployee = async (req, res) => {
       INSERT INTO employee (
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
          corresponding_address, permanent_address, branch,
-        joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
-        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        joining_date, designation, date_of_birth, assign_role, assign_role_id, assign_branch, assign_branch JSON, password,
+        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, sender_mobile1, sender_mobile2, OTP_Override, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
       pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
       corresponding_address, permanent_address, branch,
-      joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
+      joining_date, designation, date_of_birth, assign_role, assign_role_id, assign_branch || null, password,
       fax || "",
       emp_image,
       emp_add_prof,
       emp_id_prof,
 
-      // if frontend does not send, store NULL
       start_time || null,
       end_time || null,
       ip_address || null,
+
+      null,  // sender_mobile1 store NULL if not coming
+      null,  // sender_mobile2 store NULL if not coming
+      null,  // OTP_Override store NULL if not coming
 
       status !== undefined ? status : 1
     ];
@@ -2027,7 +1992,58 @@ exports.deleteEmployee = async (req, res) => {
   }
 };
 
+exports.updateSenderMobiles = async (req, res) => {
+  try {
+    const { empId, sender_mobile1, sender_mobile2 } = req.body;
 
+    if (!empId) return res.json({ status: false, msg: "empId required" });
+
+    let updates = [];
+    let values = [];
+
+    if (sender_mobile1) {
+      updates.push("sender_mobile1=?");
+      values.push(sender_mobile1);
+    }
+
+    if (sender_mobile2) {
+      updates.push("sender_mobile2=?");
+      values.push(sender_mobile2);
+    }
+
+    if (updates.length === 0) {
+      return res.json({ status: false, msg: "Nothing to update" });
+    }
+
+    values.push(empId); // last param for WHERE
+
+    await db.query(
+      `UPDATE employee SET ${updates.join(", ")} WHERE id=?`,
+      values
+    );
+
+    res.json({ status: true, msg: "Sender Mobile updated successfully" });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ status: false, msg: "Server error" });
+  }
+};
+exports.updateOTPOverride = async (req, res) => {
+  try {
+    const { empId, value } = req.body; // value = 0 or 1 Boolean
+
+    await db.query(
+      `UPDATE employee_profile SET OTP_Override=? WHERE id=?`,
+      [value, empId]
+    );
+
+    res.json({ status: true, msg: "OTP override updated" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ status: false, msg: "Server error" });
+  }
+};
 
 exports.addChargeProfile = async (req, res) => {
   try {
@@ -2140,6 +2156,7 @@ exports.getChargeProfiles = async (req, res) => {
         amount DECIMAL(10,2) NOT NULL,
         account VARCHAR(100) NOT NULL,
         isActive BOOLEAN DEFAULT FALSE,
+        addedBy VARCHAR(100),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -2922,6 +2939,4 @@ exports.getRolePermissions = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error });
   }
 };
-
-
 

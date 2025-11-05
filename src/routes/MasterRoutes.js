@@ -1,5 +1,5 @@
 const express = require("express");
-const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, getBranchess } = require("../controller/MasterController");
+const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
 const router = express.Router();
@@ -18,7 +18,6 @@ router.get("/Master_Profile/all_Item", getAllItemProfiles);
 router.get("/Master_Profile/get_gold_rate_list", getGoldRates);
 router.post("/Master_Profile/gold_rate", addGoldRate);
 
-
 // // = = = = = Product Purity = = = = =
 router.post('/Master_Profile/add-purity', addProductPurity);
 router.get('/Master_Profile/get-purity', getAllProductPurities);
@@ -26,13 +25,10 @@ router.put('/Master_Profile/update-purity', updateProductPurity);
 router.post('/Master_Profile/delete-purity', deleteProductPurity);
 // router.delete('/Master_Profile/update-purity-status', updateProductPurityStatus);
 
-
-
-
-router.post("/Master_Profile/add_Document", upload.single("file"), addDocument);
+router.post("/Master_Profile/add_Document", upload.none(), addDocument);
 router.get("/Master_Profile/get_document", getDocuments);
 router.post("/Master_Profile/update_document_status", updateDocumentStatus);
-router.post("/Master_Profile/update_document", upload.single("file"), updateDocument);
+router.post("/Master_Profile/update_document", upload.none(), updateDocument);
 //  = = = = = Area = = = = =
 router.post('/Master_Profile/add-area', addArea);
 router.get('/Master_Profile/get-area', getArea);
@@ -65,13 +61,13 @@ router.patch("/Employee_Profile/assign-branch", updateAssignBranch);
 router.get("/Employee_Profile/assign-branch/:id", getAssignBranch);
 router.get("/Employee_Profile/login-period", getMemberLoginPeriod);
 router.put("/Employee_Profile/update-login-period", updateMemberLoginPeriod);
-
+router.post("/Employee_Profile/updateSender", updateSenderMobiles);
+router.post("/Employee_Profile/updateOTP", updateOTPOverride);
 // = = = = = Roles  = = = = = 
 router.post("/User-Management/add-roles", createRoles);
 router.put("/User-Management/update-roles", updateRole);
 router.get("/User-Management/getAll-roles", getAllRoles);
 router.get("/User-Management/getAll-roles-options", getRolesForSelect);
-
 router.post("/ChargesProfile/add", addChargeProfile);
 router.get("/GetChargesProfile/get", getChargeProfiles);
 router.put("/updateChargesProfile", updateChargeProfile);
