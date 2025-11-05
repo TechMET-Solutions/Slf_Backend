@@ -2,6 +2,7 @@ const express = require("express");
 const { createRoles, updateRole, getAllRoles, addBranch, getBranches, updateBranchStatus, editItemProfileStatus, AddItemProfileList, updateItemProfile, getAllItemProfiles, addGoldRate, getGoldRates, addDocument, getDocuments, updateDocumentStatus, addProductPurity, getAllProductPurities, updateProductPurity, deleteProductPurity, updateProductPurityStatus, addArea, getArea, updateArea, deleteArea, updateBranch, createEmployee, getAllEmployee, updateEmployee, deleteEmployee, addChargeProfile, getChargeProfiles, updateChargeProfile, changeChargeProfileStatus, updateBranchSchemes, getAssignBranch, updateAssignBranch, getMemberLoginPeriod, updateMemberLoginPeriod, updateEmployeeStatus, saveRolePermissions, getRolePermissions, getRolesForSelect, updateDocument, updateSenderMobiles, updateOTPOverride, getBranchess } = require("../controller/MasterController");
 const upload = require("../middleware/uploaddocument");
 const uploadEmployeeDoc = require("../middleware/uploademployedocument");
+const { createDesignation, updateDesignation, getDesignation, deleteDesignation } = require("../../postman/role.controller");
 const router = express.Router();
 
 router.post("/Master_Profile/add_Branch", addBranch);
@@ -63,6 +64,13 @@ router.get("/Employee_Profile/login-period", getMemberLoginPeriod);
 router.put("/Employee_Profile/update-login-period", updateMemberLoginPeriod);
 router.post("/Employee_Profile/updateSender", updateSenderMobiles);
 router.post("/Employee_Profile/updateOTP", updateOTPOverride);
+
+// = = = = = Designation  = = = = = 
+router.post("/Employee_Profile/create-designation", createDesignation);
+router.put("/Employee_Profile/update-designation", updateDesignation);
+router.get("/Employee_Profile/get-designation", getDesignation);
+router.delete("/Employee_Profile/delate-designation", deleteDesignation);
+
 // = = = = = Roles  = = = = = 
 router.post("/User-Management/add-roles", createRoles);
 router.put("/User-Management/update-roles", updateRole);
