@@ -19,6 +19,7 @@ const SchemeRouter = require('./src/routes/schemeRoutes');
 const TransactionRoutes = require('./src/routes/TransactionRouting');
 const AuctionRoutes = require('./src/routes/AuctionRoutes');
 const Bank_router = require('./src/routes/bankRoute');
+const AccountCoderouter = require('./src/routes/AccountCodeRoutes');
 // 🌍 Middlewares
 app.use(cors());
 app.use(bodyParser.json());
@@ -70,6 +71,7 @@ app.use('/Scheme', SchemeRouter);
 app.use('/Transactions', TransactionRoutes);
 app.use('/Auction', AuctionRoutes);
 app.use("/bank", Bank_router);
+app.use("/account-code", AccountCoderouter);
 // 🧭 Root route
 app.get('/', (req, res) => res.json({ message: 'API running...' }));
 
