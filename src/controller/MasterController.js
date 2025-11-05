@@ -1469,6 +1469,8 @@ exports.createEmployee = async (req, res) => {
       assign_branch,
       end_time,
       ip_address,
+      addressProfiletype,
+      IdProoftype,
       fax,
       status,
     } = decryptedPayload;
@@ -1513,6 +1515,8 @@ exports.createEmployee = async (req, res) => {
         end_time TIME,
         sender_mobile1 VARCHAR(15),
         sender_mobile2 VARCHAR(15),
+        addressProfiletype VARCHAR(15),
+        IdProoftype VARCHAR(15),
         OTP_Override BOOLEAN DEFAULT 1,
         ip_address VARCHAR(50),
         status BOOLEAN DEFAULT 1,
@@ -1527,8 +1531,8 @@ exports.createEmployee = async (req, res) => {
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
         corresponding_address, permanent_address, branch, branch_id,
         joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
-        fax, emp_image, emp_add_prof, emp_id_prof, assign_branch, start_time, end_time, ip_address, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fax, emp_image, emp_add_prof, emp_id_prof, assign_branch, start_time, end_time, ip_address, addressProfiletype, IdProoftype, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -1556,6 +1560,8 @@ exports.createEmployee = async (req, res) => {
       start_time || null,
       end_time || null,
       ip_address || null,
+      addressProfiletype || null,
+      IdProoftype || null,
       status !== undefined ? status : 1
     ];
 
@@ -1573,6 +1579,7 @@ exports.createEmployee = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 
 
@@ -1850,6 +1857,8 @@ exports.updateEmployee = async (req, res) => {
       assign_role,
       assign_role_id,
       password,
+      addressProfiletype,
+      IdProoftype,
       fax,
       status,
     } = decryptedPayload;
@@ -1905,6 +1914,8 @@ exports.updateEmployee = async (req, res) => {
       "emp_image = ?",
       "emp_add_prof = ?",
       "emp_id_prof = ?",
+      "addressProfiletype = ?",
+      "IdProoftype = ?",
       "status = ?",
     ];
 
@@ -1928,6 +1939,8 @@ exports.updateEmployee = async (req, res) => {
       emp_image,
       emp_add_prof,
       emp_id_prof,
+      addressProfiletype,
+      IdProoftype,
       status !== undefined ? status : oldData.status,
       id,
     ];
@@ -1958,6 +1971,7 @@ exports.updateEmployee = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 exports.updateEmployeeStatus = async (req, res) => {
   try {
