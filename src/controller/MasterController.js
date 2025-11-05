@@ -1394,16 +1394,15 @@ exports.createEmployee = async (req, res) => {
     const emp_add_prof = req.files["emp_add_prof"] ? req.files["emp_add_prof"][0].filename : null;
     const emp_id_prof = req.files["emp_id_prof"] ? req.files["emp_id_prof"][0].filename : null;
 
-    // Parse and decrypt incoming data
+    // 🧩 Parse and decrypt incoming data
     const encryptedPayload = req.body.data;
     const decrypted = decryptData(encryptedPayload); // returns a string
     console.log("🟢 Decrypted string:", decrypted);
 
-    // Handle double-string case safely
+    // Handle possible double-string JSON issue
     let decryptedPayload;
     try {
       decryptedPayload = JSON.parse(decrypted);
-      // If it's still a string after parsing, parse again
       if (typeof decryptedPayload === "string") {
         decryptedPayload = JSON.parse(decryptedPayload);
       }
@@ -1414,7 +1413,7 @@ exports.createEmployee = async (req, res) => {
 
     console.log("✅ Parsed object:", decryptedPayload);
 
-    // Now destructure safely
+    // Destructure values
     const {
       pan_card,
       aadhar_card,
@@ -1428,12 +1427,12 @@ exports.createEmployee = async (req, res) => {
       corresponding_address,
       permanent_address,
       branch,
+      branch_id,
       joining_date,
       designation,
       date_of_birth,
       assign_role,
       password,
-      assign_branch,
       start_time,
       end_time,
       ip_address,
@@ -1441,17 +1440,18 @@ exports.createEmployee = async (req, res) => {
       status,
     } = decryptedPayload;
 
+    // 🔒 Validation
     if (
-      !pan_card || !aadhar_card || !emp_name || !assign_role_id || !mobile_no || !email || !corresponding_address ||
-      !permanent_address || !branch || !joining_date || !designation ||
-      !date_of_birth || !assign_role || !password || !emp_image ||
-      !emp_add_prof || !emp_id_prof
+      !pan_card || !aadhar_card || !emp_name || !assign_role_id ||
+      !mobile_no || !email || !corresponding_address ||
+      !permanent_address || !branch || !branch_id || !joining_date ||
+      !designation || !date_of_birth || !assign_role || !password ||
+      !emp_image || !emp_add_prof || !emp_id_prof
     ) {
       return res.status(400).json({ error: "All required fields must be provided." });
     }
 
-    // const hashedPassword = await bcrypt.hash(password, 12);
-
+    // 🧱 Create table if not exists
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS employee (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1459,17 +1459,17 @@ exports.createEmployee = async (req, res) => {
         aadhar_card VARCHAR(50) NOT NULL UNIQUE,
         emp_name VARCHAR(100) NOT NULL,
         mobile_no VARCHAR(15) NOT NULL UNIQUE,
-        Alternate_Mobile VARCHAR(15) NOT NULL UNIQUE,
+        Alternate_Mobile VARCHAR(15),
         email VARCHAR(100) NOT NULL UNIQUE,
         corresponding_address VARCHAR(255) NOT NULL,
         permanent_address VARCHAR(255) NOT NULL,
         branch VARCHAR(100) NOT NULL,
+        branch_id INT NOT NULL,
         joining_date DATE NOT NULL,
         designation VARCHAR(100) NOT NULL,
         date_of_birth DATE NOT NULL,
         assign_role VARCHAR(100) NOT NULL,
         assign_role_id VARCHAR(100) NOT NULL,
-        assign_branch JSON,
         password VARCHAR(255) NOT NULL,
         fax VARCHAR(100),
         emp_image VARCHAR(255) NOT NULL,
@@ -1477,8 +1477,8 @@ exports.createEmployee = async (req, res) => {
         emp_id_prof VARCHAR(255) NOT NULL,
         start_time TIME,
         end_time TIME,
-        sender_mobile1 VARCHAR(20),
-        sender_mobile2 VARCHAR(20),
+        sender_mobile1 VARCHAR(15),
+        sender_mobile2 VARCHAR(15),
         OTP_Override BOOLEAN DEFAULT 1,
         ip_address VARCHAR(50),
         status BOOLEAN DEFAULT 1,
@@ -1487,35 +1487,42 @@ exports.createEmployee = async (req, res) => {
     `;
     await db.query(createTableQuery);
 
+    // 🧾 Insert query
     const insertQuery = `
       INSERT INTO employee (
         pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
-         corresponding_address, permanent_address, branch,
-        joining_date, designation, date_of_birth, assign_role, assign_role_id, assign_branch, assign_branch JSON, password,
-        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, sender_mobile1, sender_mobile2, OTP_Override, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        corresponding_address, permanent_address, branch, branch_id,
+        joining_date, designation, date_of_birth, assign_role, assign_role_id, password,
+        fax, emp_image, emp_add_prof, emp_id_prof, start_time, end_time, ip_address, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-      pan_card, aadhar_card, emp_name, mobile_no, Alternate_Mobile, email,
-      corresponding_address, permanent_address, branch,
-      joining_date, designation, date_of_birth, assign_role, assign_role_id, assign_branch || null, password,
+      pan_card,
+      aadhar_card,
+      emp_name,
+      mobile_no,
+      Alternate_Mobile || null,
+      email,
+      corresponding_address,
+      permanent_address,
+      branch,
+      branch_id,
+      joining_date,
+      designation,
+      date_of_birth,
+      assign_role,
+      assign_role_id,
+      password,
       fax || "",
       emp_image,
       emp_add_prof,
       emp_id_prof,
-
       start_time || null,
       end_time || null,
       ip_address || null,
-
-      null,  // sender_mobile1 store NULL if not coming
-      null,  // sender_mobile2 store NULL if not coming
-      null,  // OTP_Override store NULL if not coming
-
       status !== undefined ? status : 1
     ];
-
 
     const [result] = await db.query(insertQuery, values);
 
@@ -1531,6 +1538,7 @@ exports.createEmployee = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 
 // 🟦 GET ALL Employee
