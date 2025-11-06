@@ -867,63 +867,66 @@ exports.approveLoanApplication = async (req, res) => {
 
 
 exports.searchLoanApplications = async (req, res) => {
-    try {
-        const { search } = req.query;
+  try {
+    const { search } = req.query;
 
-        // ✅ If search term is missing or empty, return an empty array
-        if (!search || search.trim() === "") {
-            return res.status(200).json([]);
-        }
-
-        // ✅ Check if search is numeric (ID search) - allow single character search for IDs
-        const isNumericSearch = !isNaN(search) && !isNaN(parseFloat(search));
-
-        let query;
-        let params;
-
-        if (isNumericSearch) {
-            // Search by ID (partial match for numeric search)
-            query = `
-                SELECT 
-                    id,
-                    Borrower,
-                    Scheme,
-                    Loan_amount,
-                    created_at,
-                    remark,
-                    status,
-                    Loan_Tenure
-                FROM loan_application 
-                WHERE id LIKE ? OR BorrowerId LIKE ?
-            `;
-            const searchTerm = `%${search}%`;
-            params = [searchTerm, searchTerm];
-        } else {
-            // Search by Borrower name (case-insensitive partial match)
-            query = `
-                SELECT 
-                    id,
-                    Borrower,
-                    Scheme,
-                    Loan_amount,
-                    created_at,
-                    remark,
-                    status,
-                    Loan_Tenure
-                FROM loan_application 
-                WHERE LOWER(Borrower) LIKE ? 
-                   OR LOWER(Co_Borrower) LIKE ? 
-                   OR LOWER(Print_Name) LIKE ?
-            `;
-            const searchTerm = `%${search.toLowerCase()}%`;
-            params = [searchTerm, searchTerm, searchTerm];
-        }
-
-        const [rows] = await db.query(query, params);
-
-        res.status(200).json(rows);
-    } catch (err) {
-        console.error("❌ Database error:", err);
-        res.status(500).json({ message: "Database error", error: err.message });
+    // ✅ If search term is missing or empty, return an empty array
+    if (!search || search.trim() === "") {
+      return res.status(200).json([]);
     }
+
+    // ✅ Check if search is numeric (ID search)
+    const isNumericSearch = !isNaN(search) && !isNaN(parseFloat(search));
+
+    let query;
+    let params;
+    const limit = 10; // 🔒 Fixed limit
+
+    if (isNumericSearch) {
+      // Search by ID (partial match for numeric search)
+      query = `
+        SELECT 
+          id,
+          Borrower,
+          Scheme,
+          Loan_amount,
+          created_at,
+          remark,
+          status,
+          Loan_Tenure
+        FROM loan_application 
+        WHERE id LIKE ? OR BorrowerId LIKE ?
+        LIMIT ?
+      `;
+      const searchTerm = `%${search}%`;
+      params = [searchTerm, searchTerm, limit];
+    } else {
+      // Search by Borrower name (case-insensitive partial match)
+      query = `
+        SELECT 
+          id,
+          Borrower,
+          Scheme,
+          Loan_amount,
+          created_at,
+          remark,
+          status,
+          Loan_Tenure
+        FROM loan_application 
+        WHERE LOWER(Borrower) LIKE ?
+          OR LOWER(Co_Borrower) LIKE ?
+          OR LOWER(Print_Name) LIKE ?
+        LIMIT ?
+      `;
+      const searchTerm = `%${search.toLowerCase()}%`;
+      params = [searchTerm, searchTerm, searchTerm, limit];
+    }
+
+    const [rows] = await db.query(query, params);
+
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error("❌ Database error:", err);
+    res.status(500).json({ message: "Database error", error: err.message });
+  }
 };
