@@ -11,6 +11,7 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       charges_details,
+      total_charges, // 🆕 new field
       added_by,
       remark,
     } = req.body;
@@ -24,6 +25,7 @@ exports.addLoanCharges = async (req, res) => {
       !loan_amt ||
       !pending_amt ||
       !charges_details ||
+      !total_charges || // 🆕 include total_charges in validation
       !added_by ||
       !remark
     ) {
@@ -33,7 +35,7 @@ exports.addLoanCharges = async (req, res) => {
       });
     }
 
-    // ✅ Create table if not exists (removed document_no & document_date)
+    // ✅ Create table if not exists (added total_charges field)
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS loan_charges (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -44,6 +46,7 @@ exports.addLoanCharges = async (req, res) => {
         loan_amt VARCHAR(150) NOT NULL,
         pending_amt VARCHAR(150) NOT NULL,
         charges_details JSON,
+        total_charges DECIMAL(10,2) NOT NULL, -- 🆕 new column for total charges
         remark TEXT,
         added_by VARCHAR(100) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -51,11 +54,11 @@ exports.addLoanCharges = async (req, res) => {
     `;
     await db.query(createTableQuery);
 
-    // ✅ Insert record
+    // ✅ Insert record (added total_charges)
     const insertQuery = `
       INSERT INTO loan_charges 
-      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, remark, added_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, total_charges, remark, added_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(insertQuery, [
@@ -66,6 +69,7 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
+      total_charges, // 🆕 insert total_charges
       remark,
       added_by,
     ]);
@@ -84,6 +88,7 @@ exports.addLoanCharges = async (req, res) => {
     });
   }
 };
+
 
 // 🟢 GET All or by loan_no
 exports.getLoanCharges = async (req, res) => {
