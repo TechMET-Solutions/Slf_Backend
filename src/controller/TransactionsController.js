@@ -870,30 +870,47 @@ exports.searchLoanApplications = async (req, res) => {
     try {
         const { search } = req.query;
 
-        const baseUrl = "http://localhost:5000/uploadDoc/loan_documents/";
-
         // ✅ If search term is missing or empty, return an empty array
         if (!search || search.trim() === "") {
             return res.status(200).json([]);
         }
 
-        // ✅ Check if search is numeric (likely an ID search)
+        // ✅ Check if search is numeric (ID search) - allow single character search for IDs
         const isNumericSearch = !isNaN(search) && !isNaN(parseFloat(search));
 
         let query;
         let params;
 
         if (isNumericSearch) {
-            // Search by ID (exact match)
+            // Search by ID (partial match for numeric search)
             query = `
-                SELECT * FROM loan_application 
-                WHERE id = ? OR BorrowerId = ?
+                SELECT 
+                    id,
+                    Borrower,
+                    Scheme,
+                    Loan_amount,
+                    created_at,
+                    remark,
+                    status,
+                    Loan_Tenure
+                FROM loan_application 
+                WHERE id LIKE ? OR BorrowerId LIKE ?
             `;
-            params = [parseInt(search), parseInt(search)];
+            const searchTerm = `%${search}%`;
+            params = [searchTerm, searchTerm];
         } else {
             // Search by Borrower name (case-insensitive partial match)
             query = `
-                SELECT * FROM loan_application 
+                SELECT 
+                    id,
+                    Borrower,
+                    Scheme,
+                    Loan_amount,
+                    created_at,
+                    remark,
+                    status,
+                    Loan_Tenure
+                FROM loan_application 
                 WHERE LOWER(Borrower) LIKE ? 
                    OR LOWER(Co_Borrower) LIKE ? 
                    OR LOWER(Print_Name) LIKE ?
@@ -904,24 +921,7 @@ exports.searchLoanApplications = async (req, res) => {
 
         const [rows] = await db.query(query, params);
 
-        // ✅ Format file URLs correctly
-        const formattedRows = rows.map((application) => {
-            const getFileName = (filePath) => {
-                if (!filePath) return null;
-                const parts = filePath.split(/[/\\]/);
-                return parts[parts.length - 1];
-            };
-
-            return {
-                ...application,
-                Ornament_Photo: application.Ornament_Photo ? baseUrl + getFileName(application.Ornament_Photo) : null,
-                // Parse JSON fields if they exist
-                Pledge_Item_List: application.Pledge_Item_List ? JSON.parse(application.Pledge_Item_List) : null,
-                Effective_Interest_Rates: application.Effective_Interest_Rates ? JSON.parse(application.Effective_Interest_Rates) : null,
-            };
-        });
-
-        res.status(200).json(formattedRows);
+        res.status(200).json(rows);
     } catch (err) {
         console.error("❌ Database error:", err);
         res.status(500).json({ message: "Database error", error: err.message });
