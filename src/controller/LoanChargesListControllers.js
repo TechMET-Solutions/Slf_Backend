@@ -1,6 +1,6 @@
 const db = require("../../config/database");
 
-// 🟢 CREATE Loan Charges
+// ✅ ADD Loan Charges
 exports.addLoanCharges = async (req, res) => {
   try {
     const {
@@ -12,12 +12,10 @@ exports.addLoanCharges = async (req, res) => {
       pending_amt,
       charges_details,
       added_by,
-      document_no,   // ✅ New field
-      document_date, // ✅ New field
-      remark,        // ✅ New field
+      remark,
     } = req.body;
 
-    // ✅ Validation for all required fields
+    // ✅ Validation for required fields
     if (
       !loan_no ||
       !loan_date ||
@@ -27,8 +25,6 @@ exports.addLoanCharges = async (req, res) => {
       !pending_amt ||
       !charges_details ||
       !added_by ||
-      !document_no ||
-      !document_date ||
       !remark
     ) {
       return res.status(400).json({
@@ -37,7 +33,7 @@ exports.addLoanCharges = async (req, res) => {
       });
     }
 
-    // ✅ Create table if not exists (added new fields)
+    // ✅ Create table if not exists (removed document_no & document_date)
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS loan_charges (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,8 +44,6 @@ exports.addLoanCharges = async (req, res) => {
         loan_amt VARCHAR(150) NOT NULL,
         pending_amt VARCHAR(150) NOT NULL,
         charges_details JSON,
-        document_no VARCHAR(100) NOT NULL,
-        document_date VARCHAR(100) NOT NULL,
         remark TEXT,
         added_by VARCHAR(100) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -57,11 +51,11 @@ exports.addLoanCharges = async (req, res) => {
     `;
     await db.query(createTableQuery);
 
-    // ✅ Insert record (including new fields)
+    // ✅ Insert record
     const insertQuery = `
       INSERT INTO loan_charges 
-      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, document_no, document_date, remark, added_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, remark, added_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(insertQuery, [
@@ -72,8 +66,6 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
-      document_no,
-      document_date,
       remark,
       added_by,
     ]);
@@ -135,9 +127,7 @@ exports.updateLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       charges_details,
-      document_no,   // ✅ New
-      document_date, // ✅ New
-      remark,        // ✅ New
+      remark,
     } = req.body;
 
     const [existing] = await db.query("SELECT * FROM loan_charges WHERE id = ?", [id]);
@@ -150,8 +140,8 @@ exports.updateLoanCharges = async (req, res) => {
 
     const updateQuery = `
       UPDATE loan_charges
-      SET loan_no = ?, loan_date = ?, scheme = ?, party_name = ?, loan_amt = ?, 
-          pending_amt = ?, charges_details = ?, document_no = ?, document_date = ?, remark = ?
+      SET loan_no = ?, loan_date = ?, scheme = ?, party_name = ?, 
+          loan_amt = ?, pending_amt = ?, charges_details = ?, remark = ?
       WHERE id = ?
     `;
 
@@ -163,8 +153,6 @@ exports.updateLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
-      document_no,
-      document_date,
       remark,
       id,
     ]);
