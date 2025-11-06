@@ -120,6 +120,7 @@ exports.getLoanCharges = async (req, res) => {
   }
 };
 
+
 // 🟡 UPDATE Loan Charges
 exports.updateLoanCharges = async (req, res) => {
   try {
@@ -132,9 +133,29 @@ exports.updateLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       charges_details,
+      total_charges, // 🆕 new field
       remark,
     } = req.body;
 
+    // 🛑 Validate required fields
+    if (
+      !loan_no ||
+      !loan_date ||
+      !scheme ||
+      !party_name ||
+      !loan_amt ||
+      !pending_amt ||
+      !charges_details ||
+      !total_charges ||
+      !remark
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // ✅ Check if record exists
     const [existing] = await db.query("SELECT * FROM loan_charges WHERE id = ?", [id]);
     if (existing.length === 0) {
       return res.status(404).json({
@@ -143,10 +164,19 @@ exports.updateLoanCharges = async (req, res) => {
       });
     }
 
+    // ✅ Update query (added total_charges)
     const updateQuery = `
       UPDATE loan_charges
-      SET loan_no = ?, loan_date = ?, scheme = ?, party_name = ?, 
-          loan_amt = ?, pending_amt = ?, charges_details = ?, remark = ?
+      SET 
+        loan_no = ?, 
+        loan_date = ?, 
+        scheme = ?, 
+        party_name = ?, 
+        loan_amt = ?, 
+        pending_amt = ?, 
+        charges_details = ?, 
+        total_charges = ?,  -- 🆕 new field
+        remark = ?
       WHERE id = ?
     `;
 
@@ -158,6 +188,7 @@ exports.updateLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
+      total_charges, // 🆕 update field
       remark,
       id,
     ]);
@@ -175,6 +206,7 @@ exports.updateLoanCharges = async (req, res) => {
     });
   }
 };
+
 
 // 🔴 DELETE Loan Charges
 exports.deleteLoanCharges = async (req, res) => {
