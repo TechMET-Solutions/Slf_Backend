@@ -866,49 +866,64 @@ exports.approveLoanApplication = async (req, res) => {
 
 
 
-exports.searchLoans = async (req, res) => {
-  try {
-    const { keyword } = req.query;
+exports.searchLoanApplications = async (req, res) => {
+    try {
+        const { search } = req.query;
 
-    if (!keyword || keyword.trim() === "") {
-      return res.status(400).json({ message: "Keyword is required" });
+        const baseUrl = "http://localhost:5000/uploadDoc/loan_documents/";
+
+        // ✅ If search term is missing or empty, return an empty array
+        if (!search || search.trim() === "") {
+            return res.status(200).json([]);
+        }
+
+        // ✅ Check if search is numeric (likely an ID search)
+        const isNumericSearch = !isNaN(search) && !isNaN(parseFloat(search));
+
+        let query;
+        let params;
+
+        if (isNumericSearch) {
+            // Search by ID (exact match)
+            query = `
+                SELECT * FROM loan_application 
+                WHERE id = ? OR BorrowerId = ?
+            `;
+            params = [parseInt(search), parseInt(search)];
+        } else {
+            // Search by Borrower name (case-insensitive partial match)
+            query = `
+                SELECT * FROM loan_application 
+                WHERE LOWER(Borrower) LIKE ? 
+                   OR LOWER(Co_Borrower) LIKE ? 
+                   OR LOWER(Print_Name) LIKE ?
+            `;
+            const searchTerm = `%${search.toLowerCase()}%`;
+            params = [searchTerm, searchTerm, searchTerm];
+        }
+
+        const [rows] = await db.query(query, params);
+
+        // ✅ Format file URLs correctly
+        const formattedRows = rows.map((application) => {
+            const getFileName = (filePath) => {
+                if (!filePath) return null;
+                const parts = filePath.split(/[/\\]/);
+                return parts[parts.length - 1];
+            };
+
+            return {
+                ...application,
+                Ornament_Photo: application.Ornament_Photo ? baseUrl + getFileName(application.Ornament_Photo) : null,
+                // Parse JSON fields if they exist
+                Pledge_Item_List: application.Pledge_Item_List ? JSON.parse(application.Pledge_Item_List) : null,
+                Effective_Interest_Rates: application.Effective_Interest_Rates ? JSON.parse(application.Effective_Interest_Rates) : null,
+            };
+        });
+
+        res.status(200).json(formattedRows);
+    } catch (err) {
+        console.error("❌ Database error:", err);
+        res.status(500).json({ message: "Database error", error: err.message });
     }
-
-    const searchTerm = `%${keyword}%`;
-
-    const [results] = await db.query(
-      `
-      SELECT 
-        id,
-        loan_no AS loanNo,
-        DATE_FORMAT(loan_date, '%d/%m/%Y') AS loanDate,
-        scheme,
-        party_name AS partyName,
-        loan_amount AS loanAmt,
-        pending_amount AS pendingAmt,
-        document_no AS documentNo,
-        DATE_FORMAT(document_date, '%d/%m/%Y') AS documentDate,
-        remark
-      FROM loans
-      WHERE 
-        loan_no LIKE ? OR
-        scheme LIKE ? OR
-        party_name LIKE ?
-      ORDER BY id DESC
-      `,
-      [searchTerm, searchTerm, searchTerm]
-    );
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: "No matching records found" });
-    }
-
-    res.status(200).json({
-      total: results.length,
-      data: results,
-    });
-  } catch (error) {
-    console.error("❌ Error searching loans:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
 };
