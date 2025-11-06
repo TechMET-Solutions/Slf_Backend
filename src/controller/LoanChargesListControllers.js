@@ -199,3 +199,66 @@ exports.deleteLoanCharges = async (req, res) => {
     });
   }
 };
+
+
+// ✅ Get Loan Charges by ID
+exports.getLoanChargesById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🛑 Validate ID
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID is required in request parameters",
+      });
+    }
+
+    // ✅ Ensure table exists
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS loan_charges (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        loan_no VARCHAR(100) NOT NULL,
+        loan_date VARCHAR(100) NOT NULL,
+        scheme VARCHAR(100) NOT NULL,
+        party_name VARCHAR(100) NOT NULL,
+        loan_amt VARCHAR(150) NOT NULL,
+        pending_amt VARCHAR(150) NOT NULL,
+        charges_details JSON,
+        remark TEXT,
+        added_by VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await db.query(createTableQuery);
+
+    // ✅ Fetch record by ID
+    const [rows] = await db.query(`SELECT * FROM loan_charges WHERE id = ?`, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No loan charges found with this ID",
+      });
+    }
+
+    // ✅ Parse JSON field before sending
+    const loanData = rows[0];
+    if (loanData.charges_details) {
+      loanData.charges_details = JSON.parse(loanData.charges_details);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Loan charges fetched successfully ✅",
+      data: loanData,
+    });
+  } catch (err) {
+    console.error("Get Loan Charges Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
