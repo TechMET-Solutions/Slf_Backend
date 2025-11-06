@@ -11,6 +11,7 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       charges_details,
+      added_by, // ✅ New field
     } = req.body;
 
     if (
@@ -20,12 +21,15 @@ exports.addLoanCharges = async (req, res) => {
       !party_name ||
       !loan_amt ||
       !pending_amt ||
-      !charges_details
+      !charges_details ||
+      !added_by // ✅ Validation added
     ) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
     }
 
-    // ✅ Create table if not exists
+    // ✅ Create table if not exists (added `added_by` column)
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS loan_charges (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -36,16 +40,17 @@ exports.addLoanCharges = async (req, res) => {
         loan_amt VARCHAR(150) NOT NULL,
         pending_amt VARCHAR(150) NOT NULL,
         charges_details JSON,
+        added_by VARCHAR(100) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
     await db.query(createTableQuery);
 
-    // ✅ Insert record
+    // ✅ Insert record (including `added_by`)
     const insertQuery = `
       INSERT INTO loan_charges 
-      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, added_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(insertQuery, [
@@ -56,18 +61,22 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
+      added_by,
     ]);
 
     res.status(201).json({
       success: true,
-      message: "Loan charges added successfully",
+      message: "Loan charges added successfully ✅",
       data: { id: result.insertId },
     });
   } catch (err) {
     console.error("Add Loan Charges Error:", err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: err.message });
   }
 };
+
 
 // 🟢 GET All or by loan_no
 exports.getLoanCharges = async (req, res) => {
