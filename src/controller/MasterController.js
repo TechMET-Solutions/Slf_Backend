@@ -3187,3 +3187,73 @@ exports.getActiveChargeProfiles = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+// 🔹 Search Items with Item Code and Item Name
+exports.searchItems = async (req, res) => {
+    try {
+        // 🔹 Get pagination and search parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const searchCode = req.query.searchCode || '';
+        const searchName = req.query.searchName || '';
+        const offset = (page - 1) * limit;
+
+        // Step 1️⃣: Build base query with search filters
+        let baseQuery = "FROM item_profile_list WHERE 1=1";
+        let countQuery = "SELECT COUNT(*) as total FROM item_profile_list WHERE 1=1";
+        let queryParams = [];
+
+        // Add search filters
+        if (searchCode) {
+            baseQuery += " AND code LIKE ?";
+            countQuery += " AND code LIKE ?";
+            queryParams.push(`%${searchCode}%`);
+        }
+
+        if (searchName) {
+            baseQuery += " AND name LIKE ?";
+            countQuery += " AND name LIKE ?";
+            queryParams.push(`%${searchName}%`);
+        }
+
+        // Step 2️⃣: Get total count
+        const [[{ total }]] = await db.query(countQuery, queryParams);
+
+        // Step 3️⃣: Get items for current page
+        const selectQuery = `
+            SELECT * 
+            ${baseQuery} 
+            ORDER BY id DESC 
+            LIMIT ? OFFSET ?
+        `;
+        
+        const [items] = await db.query(
+            selectQuery, 
+            [...queryParams, limit, offset]
+        );
+
+        // Step 4️⃣: Return with pagination info
+        res.status(200).json({
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            items: items,
+            showPagination: total > limit
+        });
+
+    } catch (err) {
+        console.error("❌ Database error in searchItems:", err);
+        res.status(500).json({ 
+            message: "Database error", 
+            error: err.message,
+            items: [],
+            total: 0,
+            showPagination: false
+        });
+    }
+};
