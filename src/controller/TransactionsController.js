@@ -82,6 +82,7 @@ exports.addLoanApplication = async (req, res) => {
         LastInterestPaidDate VARCHAR(100) DEFAULT NULL,
         LoanAmountPaid VARCHAR(100) DEFAULT NULL,
         LoanPendingAmount VARCHAR(100),
+        AdvanceInterestPaid VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -95,9 +96,9 @@ exports.addLoanApplication = async (req, res) => {
         Mobile_Number, Alternate_Number, Co_Borrower, Relation, Nominee,
         Nominee_Relation, Ornament_Photo, Pledge_Item_List, Loan_amount,
         Doc_Charges, Net_Payable, Valuer_1, Valuer_2, Loan_Tenure, Min_Loan,
-        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates, LoanPendingAmount,InterestPaidUpto,LoanAmountPaid
+        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates, LoanPendingAmount,InterestPaidUpto,LoanAmountPaid,AdvanceInterestPaid
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 🧩 Execute insert
@@ -130,6 +131,7 @@ exports.addLoanApplication = async (req, res) => {
       JSON.stringify(Effective_Interest_Rates || {}),
       Loan_amount,
       approval_date,
+      0,
       0
 
     ]);
