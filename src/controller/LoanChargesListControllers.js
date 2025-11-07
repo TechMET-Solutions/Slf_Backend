@@ -49,6 +49,7 @@ exports.addLoanCharges = async (req, res) => {
         total_charges DECIMAL(10,2) NOT NULL, -- 🆕 new column for total charges
         remark TEXT,
         added_by VARCHAR(100) NOT NULL,
+        payment_paid TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -56,10 +57,10 @@ exports.addLoanCharges = async (req, res) => {
 
     // ✅ Insert record (added total_charges)
     const insertQuery = `
-      INSERT INTO loan_charges 
-      (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, total_charges, remark, added_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+  INSERT INTO loan_charges
+  (loan_no, loan_date, scheme, party_name, loan_amt, pending_amt, charges_details, total_charges, payment_paid, remark, added_by)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
     const [result] = await db.query(insertQuery, [
       loan_no,
@@ -69,10 +70,12 @@ exports.addLoanCharges = async (req, res) => {
       loan_amt,
       pending_amt,
       JSON.stringify(charges_details),
-      total_charges, // 🆕 insert total_charges
+      total_charges,
+      0,          // <---- ALWAYS UNPAID DEFAULT
       remark,
       added_by,
     ]);
+
 
     res.status(201).json({
       success: true,

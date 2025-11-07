@@ -69,11 +69,19 @@ exports.addLoanApplication = async (req, res) => {
         Min_Loan DECIMAL(15,2),
         Max_Loan DECIMAL(15,2),
         approved_by VARCHAR(100),
-        approval_date DATE,
+        approval_date VARCHAR(100) DEFAULT NULL,
         branch_id INT,
         Effective_Interest_Rates JSON,
+        payments_Details JSON DEFAULT NULL,
         status ENUM('Pending', 'Approved', 'Cancelled', 'Closed') DEFAULT 'Pending',
         remark LONGTEXT,
+        InterestPendingDaysCount VARCHAR(100) DEFAULT NULL,
+        InterestDueAmount VARCHAR(100) DEFAULT NULL,
+        InterestPaidDayCount VARCHAR(100) DEFAULT NULL,
+        InterestPaidUpto VARCHAR(100) DEFAULT NULL,
+        LastInterestPaidDate VARCHAR(100) DEFAULT NULL,
+        LoanAmountPaid VARCHAR(100) DEFAULT NULL,
+        LoanPendingAmount VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -87,9 +95,9 @@ exports.addLoanApplication = async (req, res) => {
         Mobile_Number, Alternate_Number, Co_Borrower, Relation, Nominee,
         Nominee_Relation, Ornament_Photo, Pledge_Item_List, Loan_amount,
         Doc_Charges, Net_Payable, Valuer_1, Valuer_2, Loan_Tenure, Min_Loan,
-        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates
+        Max_Loan, approved_by, approval_date, branch_id, Effective_Interest_Rates, LoanPendingAmount,InterestPaidUpto,LoanAmountPaid
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // 🧩 Execute insert
@@ -120,6 +128,10 @@ exports.addLoanApplication = async (req, res) => {
       approval_date,
       branch_id,
       JSON.stringify(Effective_Interest_Rates || {}),
+      Loan_amount,
+      approval_date,
+      0
+
     ]);
 
     // 🎉 Success response
@@ -135,6 +147,7 @@ exports.addLoanApplication = async (req, res) => {
   }
 };
 
+
 exports.getLoanApplicationById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -143,53 +156,36 @@ exports.getLoanApplicationById = async (req, res) => {
       return res.status(400).json({ message: "Loan application ID is required" });
     }
 
-    // 🌐 Base URLs
-    const BASE_URL =  "http://localhost:5000";
+    const BASE_URL = "http://localhost:5000";
     const CUSTOMER_BASE = `${BASE_URL}/uploadDoc/customer_documents`;
     const ORNAMENT_BASE = `${BASE_URL}/uploads/ornaments`;
 
-    // 🧩 Query with Joins
+    // *** IMPORTANT URL FIX FUNCTION ***
+    const makeUrl = (base, val) => {
+      if (!val) return null;
+      return val.startsWith("http") ? val : `${base}/${val}`;
+    };
+
     const query = `
       SELECT 
-        la.id, 
-        la.BorrowerId, 
-        la.CoBorrowerId, 
-        la.Borrower, 
-        la.Scheme, 
-        la.Scheme_ID, 
-        la.Print_Name,
-        la.Mobile_Number, 
-        la.Alternate_Number, 
-        la.Co_Borrower, 
-        la.Relation, 
-        la.Nominee,
-        la.Nominee_Relation, 
-        la.Ornament_Photo, 
-        la.Pledge_Item_List, 
-        la.Loan_amount,
-        la.Doc_Charges, 
-        la.Net_Payable, 
-        la.Valuer_1, 
-        la.Valuer_2, 
-        la.Loan_Tenure, 
-        la.Min_Loan,
-        la.Max_Loan, 
-        la.approved_by, 
-        la.approval_date, 
-        la.branch_id,
-        la.remark, 
-        la.Effective_Interest_Rates,
-        la.status, 
-        la.remark, 
-        la.created_at, 
-        la.updated_at,
+        la.id, la.BorrowerId, la.CoBorrowerId, la.Borrower,
+        la.Scheme, la.Scheme_ID, la.Print_Name,
+        la.Mobile_Number, la.Alternate_Number, la.Co_Borrower,
+        la.Relation, la.Nominee, la.Nominee_Relation,
+        la.Ornament_Photo, la.Pledge_Item_List, la.Loan_amount,
+        la.Doc_Charges, la.Net_Payable, la.Valuer_1, la.Valuer_2,
+        la.Loan_Tenure, la.Min_Loan, la.payments_Details,
+        la.Max_Loan, la.approved_by, la.approval_date, la.branch_id,
+        la.remark, la.Effective_Interest_Rates, la.status,
+        la.InterestPendingDaysCount, la.InterestDueAmount,
+        la.InterestPaidDayCount, la.InterestPaidUpto,
+        la.LastInterestPaidDate, la.LoanPendingAmount,
+        la.created_at, la.updated_at,
 
-        -- 👤 Borrower details
         c1.signature AS borrower_signature,
         c1.profileImage AS borrower_profileImage,
         c1.Permanent_Address AS Address,
 
-        -- 🤝 Co-Borrower details
         c2.signature AS coborrower_signature,
         c2.profileImage AS coborrower_profileImage
 
@@ -207,38 +203,21 @@ exports.getLoanApplicationById = async (req, res) => {
 
     const loanApplication = loanResults[0];
 
-    // 🧠 Parse JSON fields if they exist
     if (loanApplication.Pledge_Item_List) {
-      try {
-        loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List);
-      } catch {
-        console.warn("Invalid JSON for Pledge_Item_List");
-      }
+      try { loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List); } catch { }
     }
 
     if (loanApplication.Effective_Interest_Rates) {
-      try {
-        loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates);
-      } catch {
-        console.warn("Invalid JSON for Effective_Interest_Rates");
-      }
+      try { loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates); } catch { }
     }
 
-    // 🖼️ Add full URLs for customer images
-    if (loanApplication.borrower_signature)
-      loanApplication.borrower_signature = `${CUSTOMER_BASE}/${loanApplication.borrower_signature}`;
-    if (loanApplication.borrower_profileImage)
-      loanApplication.borrower_profileImage = `${CUSTOMER_BASE}/${loanApplication.borrower_profileImage}`;
-    if (loanApplication.coborrower_signature)
-      loanApplication.coborrower_signature = `${CUSTOMER_BASE}/${loanApplication.coborrower_signature}`;
-    if (loanApplication.coborrower_profileImage)
-      loanApplication.coborrower_profileImage = `${CUSTOMER_BASE}/${loanApplication.coborrower_profileImage}`;
+    // ---- FIXED URL Logic ----
+    loanApplication.borrower_signature = makeUrl(CUSTOMER_BASE, loanApplication.borrower_signature);
+    loanApplication.borrower_profileImage = makeUrl(CUSTOMER_BASE, loanApplication.borrower_profileImage);
+    loanApplication.coborrower_signature = makeUrl(CUSTOMER_BASE, loanApplication.coborrower_signature);
+    loanApplication.coborrower_profileImage = makeUrl(CUSTOMER_BASE, loanApplication.coborrower_profileImage);
+    loanApplication.Ornament_Photo = makeUrl(ORNAMENT_BASE, loanApplication.Ornament_Photo);
 
-    // 🧾 Ornament photo (convert to full URL)
-    if (loanApplication.Ornament_Photo)
-      loanApplication.Ornament_Photo = `${ORNAMENT_BASE}/${loanApplication.Ornament_Photo}`;
-
-    // 📦 Fetch the specific scheme data
     const schemeId = loanApplication.Scheme_ID;
     let schemeData = null;
 
@@ -247,10 +226,9 @@ exports.getLoanApplicationById = async (req, res) => {
       schemeData = schemeResults.length > 0 ? schemeResults[0] : null;
     }
 
-    // ✅ Final Response
     res.status(200).json({
       success: true,
-      message: "✅ Loan application retrieved successfully",
+      message: "Loan application retrieved successfully",
       loanApplication,
       schemeData,
     });
@@ -260,6 +238,117 @@ exports.getLoanApplicationById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+exports.getLoanApplicationByIdForRepayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Loan application ID is required" });
+    }
+
+    const BASE_URL = "http://localhost:5000";
+    const CUSTOMER_BASE = `${BASE_URL}/uploadDoc/customer_documents`;
+    const ORNAMENT_BASE = `${BASE_URL}/uploads/ornaments`;
+
+    // Helper: fix URLs
+    const makeUrl = (base, val) => {
+      if (!val) return null;
+      return val.startsWith("http") ? val : `${base}/${val}`;
+    };
+
+    // 1️⃣ Fetch loan application + borrower/co-borrower
+    const queryLoan = `
+      SELECT 
+        la.*, 
+        c1.signature AS borrower_signature,
+        c1.profileImage AS borrower_profileImage,
+        c1.Permanent_Address AS borrower_address,
+        c2.signature AS coborrower_signature,
+        c2.profileImage AS coborrower_profileImage
+      FROM loan_application la
+      LEFT JOIN customers c1 ON la.BorrowerId = c1.id
+      LEFT JOIN customers c2 ON la.CoBorrowerId = c2.id
+      WHERE la.id = ?
+    `;
+    const [loanResults] = await db.query(queryLoan, [id]);
+
+    if (loanResults.length === 0) {
+      return res.status(404).json({ message: "Loan application not found" });
+    }
+
+    const loanApplication = { ...loanResults[0] };
+
+    // 2️⃣ Fetch unpaid charges for this loan
+    const queryCharges = `
+      SELECT *
+      FROM loan_charges
+      WHERE loan_no = ? AND payment_paid = 0
+    `;
+    const [chargesResults] = await db.query(queryCharges, [id]);
+
+    // Total unpaid charges
+    const totalUnpaidCharges = chargesResults.reduce(
+      (sum, charge) => sum + parseFloat(charge.total_charges || 0),
+      0
+    );
+
+    // Unpaid charges array with parsed details
+    const unpaidCharges = chargesResults.map(charge => ({
+      id: charge.id,
+      loan_date: charge.loan_date,
+      total_charges: parseFloat(charge.total_charges || 0),
+      charges_details: charge.charges_details ? JSON.parse(charge.charges_details) : [],
+      remark: charge.remark,
+      added_by: charge.added_by,
+      payment_paid: !!charge.payment_paid
+    }));
+
+    loanApplication.total_unpaid_charges = totalUnpaidCharges;
+    loanApplication.unpaid_charges = unpaidCharges;
+
+    // 3️⃣ Parse JSON fields
+    if (loanApplication.Pledge_Item_List) {
+      try { loanApplication.Pledge_Item_List = JSON.parse(loanApplication.Pledge_Item_List); } catch { }
+    }
+    if (loanApplication.Effective_Interest_Rates) {
+      try { loanApplication.Effective_Interest_Rates = JSON.parse(loanApplication.Effective_Interest_Rates); } catch { }
+    }
+
+    // 4️⃣ Fix URLs
+    loanApplication.borrower_signature = makeUrl(CUSTOMER_BASE, loanApplication.borrower_signature);
+    loanApplication.borrower_profileImage = makeUrl(CUSTOMER_BASE, loanApplication.borrower_profileImage);
+    loanApplication.coborrower_signature = makeUrl(CUSTOMER_BASE, loanApplication.coborrower_signature);
+    loanApplication.coborrower_profileImage = makeUrl(CUSTOMER_BASE, loanApplication.coborrower_profileImage);
+    loanApplication.Ornament_Photo = makeUrl(ORNAMENT_BASE, loanApplication.Ornament_Photo);
+
+    // 5️⃣ Fetch scheme details if Scheme_ID exists
+    let schemeData = null;
+    if (loanApplication.Scheme_ID) {
+      const [schemeResults] = await db.query(
+        `SELECT * FROM scheme_details WHERE id = ?`,
+        [loanApplication.Scheme_ID]
+      );
+      schemeData = schemeResults.length > 0 ? schemeResults[0] : null;
+    }
+
+    // 6️⃣ Send response with all data
+    res.status(200).json({
+      success: true,
+      message: "Loan application retrieved successfully",
+      loanApplication,
+      schemeData
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching loan application:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
 
 
 
@@ -505,9 +594,9 @@ exports.getLoanRemark = async (req, res) => {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Loan application ID is required" 
+      return res.status(400).json({
+        success: false,
+        message: "Loan application ID is required"
       });
     }
 
@@ -548,7 +637,7 @@ exports.getLoanRemark = async (req, res) => {
 exports.getCustomerRemark = async (req, res) => {
   try {
     // 1. Get the customer ID from the URL parameters (req.params)
-    const { id } = req.params; 
+    const { id } = req.params;
 
     // Validate input
     if (!id) {
@@ -806,11 +895,11 @@ exports.getAppraisalNote = async (req, res) => {
 };
 
 // ✅ Approve Loan Application Controller
+
 exports.approveLoanApplication = async (req, res) => {
   try {
-    const { id, approved_by } = req.body;
+    const { id, approved_by, rows } = req.body;   // <--- add rows
 
-    // 🔍 Validate input
     if (!id || !approved_by) {
       return res.status(400).json({
         success: false,
@@ -818,26 +907,27 @@ exports.approveLoanApplication = async (req, res) => {
       });
     }
 
-    // 🗓️ Set current date as approval date
     const approval_date = new Date();
 
-    // 🧾 Update query
+    // convert rows to json string
+    const paymentDetailsJSON = JSON.stringify(rows);
+
     const updateQuery = `
       UPDATE loan_application
       SET status = 'Approved',
           approved_by = ?,
-          approval_date = ?
+          approval_date = ?,
+          payments_Details = ?    -- <--- update this also
       WHERE id = ?
     `;
 
-    // ⚙️ Execute update
     const [result] = await db.query(updateQuery, [
       approved_by,
       approval_date,
-      id,
+      paymentDetailsJSON,      // <------ pass payment json
+      id
     ]);
 
-    // 🧠 Check if record updated
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
@@ -845,7 +935,6 @@ exports.approveLoanApplication = async (req, res) => {
       });
     }
 
-    // 🎉 Success
     res.status(200).json({
       success: true,
       message: "✅ Loan application approved successfully.",
@@ -861,10 +950,6 @@ exports.approveLoanApplication = async (req, res) => {
     });
   }
 };
-
-
-
-
 
 exports.searchLoanApplications = async (req, res) => {
   try {
