@@ -411,3 +411,135 @@ exports.blockUnblockCustomer = async (req, res) => {
         res.status(500).json({ message: "Server error", error });
     }
 };
+
+
+
+
+// Add this new controller to your existing Master controller file
+exports.getCustomersByDocumentType = async (req, res) => {
+    try {
+        const customerBaseUrl = "http://localhost:5000/uploadDoc/customer_documents/";
+        const bankBaseUrl = "http://localhost:5000/uploadCheque/customer_BankData/";
+
+        // 🔹 Get pagination and filter parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const documentType = req.query.documentType; // aadhar, pan, dl, passport
+        const searchValue = req.query.searchValue || '';
+        const offset = (page - 1) * limit;
+
+        // Step 1️⃣: Build base query with filters
+        let baseQuery = "FROM customers WHERE 1=1";
+        let countQuery = "SELECT COUNT(*) as total FROM customers WHERE 1=1";
+        let queryParams = [];
+
+        // Add document type filter
+        if (documentType) {
+            switch (documentType) {
+                case 'aadhar':
+                    baseQuery += " AND aadhar IS NOT NULL AND aadhar != ''";
+                    countQuery += " AND aadhar IS NOT NULL AND aadhar != ''";
+                    break;
+                case 'pan':
+                    baseQuery += " AND panNo IS NOT NULL AND panNo != ''";
+                    countQuery += " AND panNo IS NOT NULL AND panNo != ''";
+                    break;
+                case 'dl':
+                    // Assuming driving license is stored in Additional_IDProof or similar field
+                    baseQuery += " AND Additional_IDProof IS NOT NULL AND Additional_IDProof != ''";
+                    countQuery += " AND Additional_IDProof IS NOT NULL AND Additional_IDProof != ''";
+                    break;
+                case 'passport':
+                    // Assuming passport is stored in Additional_AddressProof or similar field
+                    baseQuery += " AND Additional_AddressProof IS NOT NULL AND Additional_AddressProof != ''";
+                    countQuery += " AND Additional_AddressProof IS NOT NULL AND Additional_AddressProof != ''";
+                    break;
+            }
+        }
+
+        // Add search filter
+        if (searchValue) {
+            const searchConditions = [
+                "firstName LIKE ?",
+                "middleName LIKE ?", 
+                "lastName LIKE ?",
+                "mobile LIKE ?",
+                "aadhar LIKE ?",
+                "panNo LIKE ?",
+                "Permanent_City LIKE ?"
+            ];
+            
+            baseQuery += " AND (" + searchConditions.join(" OR ") + ")";
+            countQuery += " AND (" + searchConditions.join(" OR ") + ")";
+            
+            // Add search parameter for each condition
+            for (let i = 0; i < searchConditions.length; i++) {
+                queryParams.push(`%${searchValue}%`);
+            }
+        }
+
+        // Step 2️⃣: Get total count
+        const [[{ total }]] = await db.query(countQuery, queryParams);
+
+        // Step 3️⃣: Get customers for current page
+        const selectQuery = `
+            SELECT * 
+            ${baseQuery} 
+            ORDER BY createdAt DESC 
+            LIMIT ? OFFSET ?
+        `;
+        
+        const [customers] = await db.query(
+            selectQuery, 
+            [...queryParams, limit, offset]
+        );
+
+        // Step 4️⃣: Get all bank details
+        const [bankDetails] = await db.query("SELECT * FROM bank_details");
+
+        // Helper function to extract only filename
+        const getFileName = (filePath) => {
+            if (!filePath) return null;
+            const parts = filePath.split(/[/\\]/);
+            return parts[parts.length - 1];
+        };
+
+        // Step 5️⃣: Attach formatted bank & file URLs
+        const formattedCustomers = customers.map((customer) => {
+            const customerBanks = bankDetails
+                .filter((b) => b.customerId === customer.id)
+                .map((b) => ({
+                    ...b,
+                    cancelCheque: b.cancelCheque ? bankBaseUrl + getFileName(b.cancelCheque) : null,
+                }));
+
+            return {
+                ...customer,
+                panFile: customer.panFile ? customerBaseUrl + getFileName(customer.panFile) : null,
+                aadharFile: customer.aadharFile ? customerBaseUrl + getFileName(customer.aadharFile) : null,
+                profileImage: customer.profileImage ? customerBaseUrl + getFileName(customer.profileImage) : null,
+                signature: customer.signature ? customerBaseUrl + getFileName(customer.signature) : null,
+                Additional_UploadDocumentFile1: customer.Additional_UploadDocumentFile1
+                    ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile1)
+                    : null,
+                Additional_UploadDocumentFile2: customer.Additional_UploadDocumentFile2
+                    ? customerBaseUrl + getFileName(customer.Additional_UploadDocumentFile2)
+                    : null,
+                bankData: customerBanks,
+            };
+        });
+
+        // Step 6️⃣: Return with pagination info
+        res.status(200).json({
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            data: formattedCustomers,
+        });
+
+    } catch (err) {
+        console.error("❌ Database error:", err);
+        res.status(500).json({ message: "Database error", error: err.message });
+    }
+};

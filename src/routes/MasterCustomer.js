@@ -1,6 +1,6 @@
 const express = require("express");
 const uploadDoc = require("../middleware/uploadcustdocument");
-const { addCustomer, getCustomers, updateCustomer, blockUnblockCustomer, searchCustomers } = require("../controller/MastercustDocument");
+const { addCustomer, getCustomers, updateCustomer, blockUnblockCustomer, searchCustomers, getCustomersByDocumentType } = require("../controller/MastercustDocument");
 // path must be correct
 
 
@@ -35,5 +35,6 @@ Customer_router.post(
     updateCustomer
 );
 Customer_router.post("/blockUnblockCustomer", blockUnblockCustomer);
+Customer_router.get("/listByDocument",getCustomersByDocumentType);
 
 module.exports = Customer_router;
