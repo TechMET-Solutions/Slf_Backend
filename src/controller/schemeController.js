@@ -300,3 +300,46 @@ exports.updateSchemeRoles = async (req, res) => {
         res.status(500).json({ error: "Server error while updating roles" });
     }
 };
+
+
+
+
+
+
+// ✅ Fetch only active schemes
+
+
+exports.getActiveSchemes = async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT 
+        id,
+        schemeName,
+        applicableFrom,
+        applicableTo,
+        calcMethod,
+        minLoanAmount,
+        maxLoanAmount,
+        description,
+        status
+      FROM scheme_details
+      WHERE status = 1
+    `);
+
+    res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching active schemes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching active schemes.",
+    });
+  }
+};
+
+
+
+
