@@ -485,15 +485,85 @@ exports.getLoanApplications = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // 🔍 Optional status filter (Include Closed status)
-    const { status } = req.query;
+    // 🔍 Extract all possible filter parameters
+    const { 
+      status, 
+      loan_no, 
+      party_name, 
+      loan_date, 
+      loan_amount_min, 
+      loan_amount_max,
+      added_by,
+      approved_by,
+      scheme_id,
+      borrower_id
+    } = req.query;
+
     let whereClause = "";
     const params = [];
+    const conditions = [];
 
-    // Add Closed to the allowed statuses
+    // Status filter (Include Closed status)
     if (status && ["Pending", "Approved", "Cancelled", "Closed"].includes(status)) {
-      whereClause = "WHERE status = ?";
+      conditions.push("status = ?");
       params.push(status);
+    }
+
+    // Loan No filter (exact match or partial match)
+    if (loan_no) {
+      conditions.push("id = ?");
+      params.push(parseInt(loan_no));
+    }
+
+    // Party Name filter (case-insensitive partial match)
+    if (party_name) {
+      conditions.push("Borrower LIKE ?");
+      params.push(`%${party_name}%`);
+    }
+
+    // Loan Date filter (exact date match)
+    if (loan_date) {
+      conditions.push("DATE(created_at) = ?");
+      params.push(loan_date);
+    }
+
+    // Loan Amount range filter
+    if (loan_amount_min) {
+      conditions.push("Loan_amount >= ?");
+      params.push(parseFloat(loan_amount_min));
+    }
+    if (loan_amount_max) {
+      conditions.push("Loan_amount <= ?");
+      params.push(parseFloat(loan_amount_max));
+    }
+
+    // Added By filter (case-insensitive partial match)
+    if (added_by) {
+      conditions.push("approved_by LIKE ?");
+      params.push(`%${added_by}%`);
+    }
+
+    // Approved By filter (case-insensitive partial match)
+    if (approved_by) {
+      conditions.push("approved_by LIKE ?");
+      params.push(`%${approved_by}%`);
+    }
+
+    // Scheme ID filter (exact match)
+    if (scheme_id) {
+      conditions.push("Scheme_ID = ?");
+      params.push(parseInt(scheme_id));
+    }
+
+    // Borrower ID filter (exact match)
+    if (borrower_id) {
+      conditions.push("BorrowerId = ?");
+      params.push(parseInt(borrower_id));
+    }
+
+    // Build WHERE clause if any conditions exist
+    if (conditions.length > 0) {
+      whereClause = "WHERE " + conditions.join(" AND ");
     }
 
     // 🧮 Total count for pagination
@@ -513,7 +583,11 @@ exports.getLoanApplications = async (req, res) => {
         Loan_amount AS Loan_Amount,
         status AS Status,
         approved_by AS Approved_By,
-        approved_by AS Added_By
+        approved_by AS Added_By,
+        Scheme_ID,
+        Scheme,
+        created_at,
+        updated_at
       FROM loan_application
       ${whereClause}
       ORDER BY created_at DESC
@@ -529,6 +603,18 @@ exports.getLoanApplications = async (req, res) => {
       page,
       totalPages: Math.ceil(total / limit),
       data: rows,
+      filters: {
+        status,
+        loan_no,
+        party_name,
+        loan_date,
+        loan_amount_min,
+        loan_amount_max,
+        added_by,
+        approved_by,
+        scheme_id,
+        borrower_id
+      }
     });
   } catch (error) {
     console.error("❌ Error fetching loan applications:", error);
