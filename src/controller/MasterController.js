@@ -1689,13 +1689,42 @@ exports.getAllEmployee = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    
+    // Get filter parameters from query string
+    const { id, name, search } = req.query;
+    
+    // Build WHERE clause for filtering
+    let whereClause = "";
+    const queryParams = [];
+    
+    if (id) {
+      whereClause += " WHERE id = ?";
+      queryParams.push(id);
+    } else if (name) {
+      whereClause += " WHERE emp_name LIKE ?";
+      queryParams.push(`%${name}%`);
+    } else if (search) {
+      // General search that looks in both id and name
+      whereClause += " WHERE (id = ? OR emp_name LIKE ?)";
+      queryParams.push(search, `%${search}%`);
+    }
 
-    const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM employee");
+    // Get total count with filters
+    const countQuery = `SELECT COUNT(*) AS total FROM employee${whereClause}`;
+    const [[{ total }]] = await db.query(countQuery, queryParams);
 
-    const [rows] = await db.query(
-      `SELECT * FROM employee ORDER BY id DESC LIMIT ? OFFSET ?`,
-      [limit, offset]
-    );
+    // Build main query with filters, pagination, and ordering
+    const mainQuery = `
+      SELECT * FROM employee 
+      ${whereClause}
+      ORDER BY id DESC 
+      LIMIT ? OFFSET ?
+    `;
+    
+    // Add pagination parameters to existing query params
+    const mainQueryParams = [...queryParams, limit, offset];
+    
+    const [rows] = await db.query(mainQuery, mainQueryParams);
 
     // ✅ Append full image URLs
     const employeesWithFullImagePath = rows.map(emp => ({
@@ -1719,6 +1748,12 @@ exports.getAllEmployee = async (req, res) => {
         page,
         limit,
         showPagination: total > limit,
+        // Include applied filters in response for reference
+        filters: {
+          id: id || null,
+          name: name || null,
+          search: search || null
+        }
       })
     );
 
