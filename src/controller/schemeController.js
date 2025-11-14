@@ -96,17 +96,70 @@ exports.addSchemeDetails = async (req, res) => {
     }
 };
 
+// exports.getAllSchemes = async (req, res) => {
+//     try {
+//         const [rows] = await db.query("SELECT * FROM scheme_details");
+
+//         // 🗓️ Get today's date (YYYY-MM-DD)
+//         const today = new Date();
+//         const yyyy = today.getFullYear();
+//         const mm = String(today.getMonth() + 1).padStart(2, "0");
+//         const dd = String(today.getDate()).padStart(2, "0");
+//         const todayStr = `${yyyy}-${mm}-${dd}`;
+
+//         const formatted = rows
+//             .map((r) => ({
+//                 ...r,
+//                 interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
+//                 intCompound: r.calcMethod === "compound",
+//             }))
+//             .filter((r) => {
+//                 if (!r.applicableTo) return false;
+
+//                 // Ensure we safely extract date part
+//                 const appTo = new Date(r.applicableTo);
+//                 const appToStr = `${appTo.getFullYear()}-${String(
+//                     appTo.getMonth() + 1
+//                 ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
+
+//                 // ✅ Include if applicableTo is today or after today
+//                 return appToStr >= todayStr;
+//             });
+
+//         res.json(formatted);
+//     } catch (err) {
+//         console.error("❌ Error fetching schemes:", err);
+//         res.status(500).json({ error: "Error fetching schemes" });
+//     }
+// };
+
 exports.getAllSchemes = async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT * FROM scheme_details");
+        // 🔢 Pagination Inputs
+        let page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 10;
+        let offset = (page - 1) * limit;
 
-        // 🗓️ Get today's date (YYYY-MM-DD)
+        // 📌 Fetch total rows count
+        const [countRows] = await db.query(
+            "SELECT COUNT(*) AS total FROM scheme_details"
+        );
+        const totalItems = countRows[0].total;
+
+        // 📌 Fetch paginated data
+        const [rows] = await db.query(
+            "SELECT * FROM scheme_details LIMIT ? OFFSET ?",
+            [limit, offset]
+        );
+
+        // 🗓️ Today's date (YYYY-MM-DD)
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, "0");
         const dd = String(today.getDate()).padStart(2, "0");
         const todayStr = `${yyyy}-${mm}-${dd}`;
 
+        // 📌 Format + Filter
         const formatted = rows
             .map((r) => ({
                 ...r,
@@ -116,35 +169,84 @@ exports.getAllSchemes = async (req, res) => {
             .filter((r) => {
                 if (!r.applicableTo) return false;
 
-                // Ensure we safely extract date part
                 const appTo = new Date(r.applicableTo);
                 const appToStr = `${appTo.getFullYear()}-${String(
                     appTo.getMonth() + 1
                 ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
 
-                // ✅ Include if applicableTo is today or after today
                 return appToStr >= todayStr;
             });
 
-        res.json(formatted);
+        // 📌 Response with pagination details
+        res.json({
+            page,
+            limit,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            data: formatted,
+        });
+
     } catch (err) {
         console.error("❌ Error fetching schemes:", err);
         res.status(500).json({ error: "Error fetching schemes" });
     }
 };
 
+// exports.getExpiredSchemes = async (req, res) => {
+//     try {
+//         const [rows] = await db.query("SELECT * FROM scheme_details");
+
+//         // 🗓️ Get today's date (YYYY-MM-DD)
+//         const today = new Date();
+//         const yyyy = today.getFullYear();
+//         const mm = String(today.getMonth() + 1).padStart(2, "0");
+//         const dd = String(today.getDate()).padStart(2, "0");
+//         const todayStr = `${yyyy}-${mm}-${dd}`;
+
+//         const expiredSchemes = rows
+//             .map((r) => ({
+//                 ...r,
+//                 interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
+//                 intCompound: r.calcMethod === "compound",
+//             }))
+//             .filter((r) => {
+//                 if (!r.applicableTo) return false;
+
+//                 const appTo = new Date(r.applicableTo);
+//                 const appToStr = `${appTo.getFullYear()}-${String(
+//                     appTo.getMonth() + 1
+//                 ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
+
+//                 // ✅ Include only expired schemes (applicableTo < today)
+//                 return appToStr < todayStr;
+//             });
+
+//         res.json(expiredSchemes);
+//     } catch (err) {
+//         console.error("❌ Error fetching expired schemes:", err);
+//         res.status(500).json({ error: "Error fetching expired schemes" });
+//     }
+// };
+
 exports.getExpiredSchemes = async (req, res) => {
     try {
+        // 🔢 Pagination Inputs
+        let page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 10;
+        let offset = (page - 1) * limit;
+
+        // 📌 Fetch all schemes (we must filter in JS due to date logic)
         const [rows] = await db.query("SELECT * FROM scheme_details");
 
-        // 🗓️ Get today's date (YYYY-MM-DD)
+        // 🗓️ Today's date (YYYY-MM-DD)
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, "0");
         const dd = String(today.getDate()).padStart(2, "0");
         const todayStr = `${yyyy}-${mm}-${dd}`;
 
-        const expiredSchemes = rows
+        // 📌 Format + Filter expired only
+        const expired = rows
             .map((r) => ({
                 ...r,
                 interestRates: r.interestRates ? JSON.parse(r.interestRates) : [],
@@ -158,11 +260,24 @@ exports.getExpiredSchemes = async (req, res) => {
                     appTo.getMonth() + 1
                 ).padStart(2, "0")}-${String(appTo.getDate()).padStart(2, "0")}`;
 
-                // ✅ Include only expired schemes (applicableTo < today)
-                return appToStr < todayStr;
+                return appToStr < todayStr; // expired
             });
 
-        res.json(expiredSchemes);
+        // 📌 Total expired items
+        const totalItems = expired.length;
+
+        // 📌 Apply pagination on expired list
+        const paginatedData = expired.slice(offset, offset + limit);
+
+        // 📌 Return paginated response
+        res.json({
+            page,
+            limit,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            data: paginatedData,
+        });
+
     } catch (err) {
         console.error("❌ Error fetching expired schemes:", err);
         res.status(500).json({ error: "Error fetching expired schemes" });
