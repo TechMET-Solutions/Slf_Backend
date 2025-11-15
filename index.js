@@ -21,6 +21,7 @@ const AuctionRoutes = require('./src/routes/AuctionRoutes');
 const Bank_router = require('./src/routes/bankRoute');
 const AccountCoderouter = require('./src/routes/AccountCodeRoutes');
 const LoanChargesRouters = require('./src/routes/LoanChargesRoutes');
+const creditNoteRoutes = require('./src/routes/CreditNoteRoutes');
 // 🌍 Middlewares
 app.use(cors());
 app.use(bodyParser.json());
@@ -74,6 +75,7 @@ app.use('/Auction', AuctionRoutes);
 app.use("/bank", Bank_router);
 app.use("/account-code", AccountCoderouter);
 app.use("/loan-charges", LoanChargesRouters);
+app.use("/credit-note", creditNoteRoutes);
 // 🧭 Root route
 app.get('/', (req, res) => res.json({ message: 'API running...' }));
 
